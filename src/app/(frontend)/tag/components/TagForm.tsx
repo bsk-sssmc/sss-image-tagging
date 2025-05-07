@@ -28,9 +28,15 @@ export default function TagForm({ onSubmit }: TagFormProps) {
   // State for form fields
   const [selectedPersons, setSelectedPersons] = useState<Person[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [locationConfidence, setLocationConfidence] = useState('3');
+  const [locationHoverRating, setLocationHoverRating] = useState(0);
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
-  const [dateType, setDateType] = useState<'full' | 'decade' | 'year' | 'month-year'>('full');
-  const [dateValue, setDateValue] = useState<string>('');
+  const [occasionConfidence, setOccasionConfidence] = useState('3');
+  const [occasionHoverRating, setOccasionHoverRating] = useState(0);
+  const [dateType, setDateType] = useState('full');
+  const [dateValue, setDateValue] = useState('');
+  const [dateConfidence, setDateConfidence] = useState('3');
+  const [dateHoverRating, setDateHoverRating] = useState(0);
   const [context, setContext] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
 
@@ -190,10 +196,13 @@ export default function TagForm({ onSubmit }: TagFormProps) {
                   dateType === 'decade' ? 'decades' : 
                   dateType === 'year' ? 'year' : 'month_year',
         whenValue: dateValue,
+        whenValueConfidence: dateConfidence,
         mediaId: imageId,
         persons: selectedPersons.map(person => person.id),
         location: selectedLocation?.id || null,
+        locationConfidence: locationConfidence,
         occasion: selectedOccasion?.id || null,
+        occasionConfidence: occasionConfidence,
         context: context.trim(),
         remarks: remarks.trim(),
         createdBy: user.id,
@@ -349,7 +358,24 @@ export default function TagForm({ onSubmit }: TagFormProps) {
 
       {/* Location Input */}
       <div className="form-group">
-        <label>Where was this image taken?</label>
+        <div className="input-header">
+          <label>Where was this image taken?</label>
+          {selectedLocation && (
+            <div className="star-rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`star ${star <= (locationHoverRating || parseInt(locationConfidence)) ? 'filled' : ''}`}
+                  onMouseEnter={() => setLocationHoverRating(star)}
+                  onMouseLeave={() => setLocationHoverRating(0)}
+                  onClick={() => setLocationConfidence(star.toString())}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="dropdown-container" ref={locationDropdownRef}>
           <input
             type="text"
@@ -377,7 +403,24 @@ export default function TagForm({ onSubmit }: TagFormProps) {
 
       {/* Occasion Input */}
       <div className="form-group">
-        <label>Any occasion / festival around the image?</label>
+        <div className="input-header">
+          <label>Any occasion / festival around the image?</label>
+          {selectedOccasion && (
+            <div className="star-rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`star ${star <= (occasionHoverRating || parseInt(occasionConfidence)) ? 'filled' : ''}`}
+                  onMouseEnter={() => setOccasionHoverRating(star)}
+                  onMouseLeave={() => setOccasionHoverRating(0)}
+                  onClick={() => setOccasionConfidence(star.toString())}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="dropdown-container" ref={occasionDropdownRef}>
           <input
             type="text"
@@ -405,70 +448,51 @@ export default function TagForm({ onSubmit }: TagFormProps) {
 
       {/* Date Input */}
       <div className="form-group">
-        <label>When was this image taken?</label>
-        <div className="date-inputs">
-          <select
-            value={dateType}
-            onChange={(e) => setDateType(e.target.value as any)}
-          >
-            <option value="full">Full Date</option>
-            <option value="decade">Decades</option>
-            <option value="year">Year</option>
-            <option value="month-year">Month-Year</option>
-          </select>
-
-          {dateType === 'full' && (
-            <input
-              type="date"
-              min="1926-11-23"
-              max="2011-04-24"
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-            />
-          )}
-
-          {dateType === 'decade' && (
-            <select
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-            >
-              <option value="">Select decade</option>
-              {['1920s', '1930s', '1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s'].map(decade => (
-                <option key={decade} value={decade}>{decade}</option>
+        <div className="input-header">
+          <label>When was this image taken?</label>
+          {dateValue && (
+            <div className="star-rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`star ${star <= (dateHoverRating || parseInt(dateConfidence)) ? 'filled' : ''}`}
+                  onMouseEnter={() => setDateHoverRating(star)}
+                  onMouseLeave={() => setDateHoverRating(0)}
+                  onClick={() => setDateConfidence(star.toString())}
+                >
+                  ★
+                </span>
               ))}
-            </select>
-          )}
-
-          {dateType === 'year' && (
-            <select
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-            >
-              <option value="">Select year</option>
-              {Array.from({ length: 86 }, (_, i) => 1926 + i).map(year => (
-                <option key={year} value={year.toString()}>{year}</option>
-              ))}
-            </select>
-          )}
-
-          {dateType === 'month-year' && (
-            <select
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-            >
-              <option value="">Select month and year</option>
-              {Array.from({ length: 1014 }, (_, i) => {
-                const date = new Date(1926, 10 + i, 1); // Start from November 1926
-                if (date > new Date(2011, 3, 24)) return null; // End at April 2011
-                return (
-                  <option key={i} value={date.toISOString().slice(0, 7)}>
-                    {date.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                  </option>
-                );
-              }).filter(Boolean)}
-            </select>
+            </div>
           )}
         </div>
+        <div className="date-type-selector">
+          <select
+            value={dateType}
+            onChange={(e) => setDateType(e.target.value)}
+            className="date-type-select"
+          >
+            <option value="full">Full Date</option>
+            <option value="decade">Decade</option>
+            <option value="year">Year</option>
+            <option value="month_year">Month-Year</option>
+          </select>
+        </div>
+        <input
+          type="text"
+          value={dateValue}
+          onChange={(e) => setDateValue(e.target.value)}
+          placeholder={
+            dateType === 'full'
+              ? 'YYYY-MM-DD'
+              : dateType === 'decade'
+              ? 'e.g., 1980s'
+              : dateType === 'year'
+              ? 'YYYY'
+              : 'YYYY-MM'
+          }
+          className="date-input"
+        />
       </div>
 
       {/* Context Input */}

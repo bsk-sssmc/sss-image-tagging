@@ -245,10 +245,13 @@ export interface ImageTag {
   id: string;
   whenType: 'full_date' | 'decades' | 'year' | 'month_year';
   whenValue: string;
+  whenValueConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   mediaId: string | Media;
   persons?: (string | Person)[] | null;
   location?: (string | null) | Location;
+  locationConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   occasion?: (string | null) | Occasion;
+  occasionConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   context?: string | null;
   remarks?: string | null;
   createdBy: string | User;
@@ -423,10 +426,13 @@ export interface PersonsSelect<T extends boolean = true> {
 export interface ImageTagsSelect<T extends boolean = true> {
   whenType?: T;
   whenValue?: T;
+  whenValueConfidence?: T;
   mediaId?: T;
   persons?: T;
   location?: T;
+  locationConfidence?: T;
   occasion?: T;
+  occasionConfidence?: T;
   context?: T;
   remarks?: T;
   createdBy?: T;

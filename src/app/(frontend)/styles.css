@@ -841,3 +841,80 @@ h1 {
     font-size: 1.75rem;
   }
 }
+
+.input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.star-rating {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.star {
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.star.filled {
+  color: #ffd700;
+}
+
+.star:hover {
+  color: #ffd700;
+}
+
+/* Remove the old confidence selector styles */
+.confidence-selector {
+  display: none;
+}
+
+.confidence-selector label {
+  display: none;
+}
+
+.confidence-select {
+  display: none;
+}
+
+.confidence-select:focus {
+  display: none;
+}
+
+.date-type-selector {
+  margin-bottom: 0.5rem;
+}
+
+.date-type-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.9rem;
+}
+
+.date-type-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.date-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
