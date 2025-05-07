@@ -7,8 +7,15 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
+import { s3Storage } from '@payloadcms/storage-s3';
+
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
+import { Locations } from './collections/Locations'
+import { Occasions } from './collections/Occasions'
+import { Persons } from './collections/Persons'
+import ImageTags from './collections/ImageTags'
+import { Albums } from './collections/Albums'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -20,7 +27,11 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media],
+  auth: {
+    maxLoginAttempts: 5,
+    lockTime: 30000,
+  },
+  collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -32,6 +43,20 @@ export default buildConfig({
   sharp,
   plugins: [
     payloadCloudPlugin(),
-    // storage-adapter-placeholder
+    s3Storage({
+      collections: {
+        media: true, // 'media' must match your Media collection slug
+      },
+      bucket: process.env.S3_BUCKET!,
+      config: {
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+        },
+        region: process.env.S3_REGION!,
+        endpoint: process.env.S3_ENDPOINT, // keep as-is if optional
+        // ... any other S3ClientConfig options ...
+      },
+    }),
   ],
 })

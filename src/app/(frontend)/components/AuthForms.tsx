@@ -1,0 +1,229 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '../context/AuthContext'
+
+export default function AuthForms() {
+  const [showRegister, setShowRegister] = useState(false)
+  const [error, setError] = useState('')
+  const [showDisplayNameForm, setShowDisplayNameForm] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const router = useRouter()
+  const { setUser, checkAuth } = useAuth()
+
+  useEffect(() => {
+    // Check if user needs to set display name
+    const checkDisplayName = async () => {
+      try {
+        const res = await fetch('/api/users/me', {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.user) {
+            setUserId(data.user.id)
+            if (!data.user.displayName) {
+              setShowDisplayNameForm(true)
+            }
+          }
+        }
+      } catch (err) {
+        // Only log the error if it's not a 401 (Unauthorized)
+        if (err instanceof Error && !err.message.includes('401')) {
+          console.error('Error checking display name:', err)
+        }
+      }
+    }
+    checkDisplayName()
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError('')
+    
+    const formData = new FormData(e.currentTarget)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    try {
+      // Get the 'from' parameter from the URL
+      const url = new URL(window.location.href)
+      const from = url.searchParams.get('from') || '/'
+      
+      console.log('Attempting login with redirect to:', from)
+      
+      const res = await fetch(`/api/users/login?from=${encodeURIComponent(from)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        }),
+        credentials: 'include',
+      })
+
+      const data = await res.json()
+      console.log('Login response:', { status: res.status, ok: res.ok, data })
+
+      if (!res.ok) {
+        throw new Error(data.errors?.[0]?.message || 'Login failed')
+      }
+
+      // Store user ID and check if user has display name
+      if (data?.user) {
+        console.log('Login successful, user data received')
+        setUserId(data.user.id)
+        if (!data.user.displayName) {
+          setShowDisplayNameForm(true)
+        } else {
+          // Update auth context and redirect to the original destination
+          await checkAuth()
+          console.log('Redirecting to:', data.redirectTo || '/')
+          router.push(data.redirectTo || '/')
+        }
+      } else {
+        throw new Error('User data not found in response')
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError(err instanceof Error ? err.message : 'Login failed')
+    }
+  }
+
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError('')
+
+    const formData = new FormData(e.currentTarget)
+    const displayName = formData.get('displayName') as string
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const verifyPassword = formData.get('verifyPassword') as string
+
+    if (password !== verifyPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    try {
+      const res = await fetch('/api/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          displayName,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.errors?.[0]?.message || 'Registration failed')
+      }
+
+      // After successful registration, show login form
+      setShowRegister(false)
+      setError('Registration successful! Please login.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    }
+  }
+
+  const handleDisplayNameSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError('')
+
+    if (!userId) {
+      setError('User ID not found')
+      return
+    }
+
+    const formData = new FormData(e.currentTarget)
+    const displayName = formData.get('displayName') as string
+
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ displayName }),
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to update display name')
+      }
+
+      setShowDisplayNameForm(false)
+      // Update auth context and redirect to home page
+      await checkAuth()
+      router.push('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update display name')
+    }
+  }
+
+  if (showDisplayNameForm) {
+    return (
+      <div className="auth-container">
+        {error && <div className="error-message">{error}</div>}
+        <form className="auth-form" onSubmit={handleDisplayNameSubmit}>
+          <h2>Set Your Display Name</h2>
+          <div className="form-group">
+            <input type="text" name="displayName" placeholder="Display Name" required />
+          </div>
+          <button type="submit" className="auth-button">Save Display Name</button>
+        </form>
+      </div>
+    )
+  }
+
+  return (
+    <div className="auth-container">
+      {error && <div className="error-message">{error}</div>}
+      
+      {/* Login Form */}
+      <form className="auth-form" style={{ display: showRegister ? 'none' : 'block' }} onSubmit={handleLogin}>
+        <h2>Login</h2>
+        <div className="form-group">
+          <input type="email" name="email" placeholder="Email" required />
+        </div>
+        <div className="form-group">
+          <input type="password" name="password" placeholder="Password" required />
+        </div>
+        <button type="submit" className="auth-button">Login</button>
+        <p className="switch-form">
+          New user? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(true) }}>Register here</a>
+        </p>
+      </form>
+
+      {/* Registration Form */}
+      <form className="auth-form" style={{ display: showRegister ? 'block' : 'none' }} onSubmit={handleRegister}>
+        <h2>Register</h2>
+        <div className="form-group">
+          <input type="text" name="displayName" placeholder="Display Name" required />
+        </div>
+        <div className="form-group">
+          <input type="email" name="email" placeholder="Email" required />
+        </div>
+        <div className="form-group">
+          <input type="password" name="password" placeholder="Password" required />
+        </div>
+        <div className="form-group">
+          <input type="password" name="verifyPassword" placeholder="Verify Password" required />
+        </div>
+        <button type="submit" className="auth-button">Register</button>
+        <p className="switch-form">
+          Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(false) }}>Login here</a>
+        </p>
+      </form>
+    </div>
+  )
+} 
