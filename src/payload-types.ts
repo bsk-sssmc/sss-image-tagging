@@ -74,6 +74,7 @@ export interface Config {
     persons: Person;
     'image-tags': ImageTag;
     albums: Album;
+    comments: Comment;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -87,6 +88,7 @@ export interface Config {
     persons: PersonsSelect<false> | PersonsSelect<true>;
     'image-tags': ImageTagsSelect<false> | ImageTagsSelect<true>;
     albums: AlbumsSelect<false> | AlbumsSelect<true>;
+    comments: CommentsSelect<false> | CommentsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -273,6 +275,31 @@ export interface Album {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments".
+ */
+export interface Comment {
+  id: string;
+  commentText: string;
+  commentBy: string | User;
+  image: string | Media;
+  createdAt: string;
+  commentUpvotes: number;
+  commentDownvotes: number;
+  /**
+   * If this is a reply, link to the parent comment
+   */
+  parentComment?: {
+    relationTo: 'comments';
+    value: string | Comment;
+  } | null;
+  /**
+   * Depth of the comment in the reply tree (0 for top-level comments)
+   */
+  depth: number;
+  updatedAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -305,6 +332,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'albums';
         value: string | Album;
+      } | null)
+    | ({
+        relationTo: 'comments';
+        value: string | Comment;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -450,6 +481,21 @@ export interface AlbumsSelect<T extends boolean = true> {
   images?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments_select".
+ */
+export interface CommentsSelect<T extends boolean = true> {
+  commentText?: T;
+  commentBy?: T;
+  image?: T;
+  createdAt?: T;
+  commentUpvotes?: T;
+  commentDownvotes?: T;
+  parentComment?: T;
+  depth?: T;
+  updatedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

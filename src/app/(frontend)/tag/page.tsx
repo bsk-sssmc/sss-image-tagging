@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import ImageModal from './components/ImageModal';
 import TagForm from './components/TagForm';
+import Comments from './components/Comments';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 
@@ -181,8 +182,20 @@ export default function TagPage() {
         </div>
 
         {/* Right Column - Form */}
-        <TagForm onSubmit={handleFormSubmit} />
+        <div className="right-column">
+          <TagForm onSubmit={handleFormSubmit} />
+        </div>
       </div>
+
+      {/* Comments Section - Full Width */}
+      {currentImage?.id && (
+        <>
+          {console.log('Passing image ID to Comments:', currentImage.id)}
+          <div className="comments-section-container">
+            <Comments imageId={currentImage.id} />
+          </div>
+        </>
+      )}
 
       {/* Image Modal */}
       <ImageModal

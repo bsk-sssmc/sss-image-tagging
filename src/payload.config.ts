@@ -16,6 +16,7 @@ import { Occasions } from './collections/Occasions'
 import { Persons } from './collections/Persons'
 import ImageTags from './collections/ImageTags'
 import { Albums } from './collections/Albums'
+import Comments from './collections/Comments'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -31,7 +32,7 @@ export default buildConfig({
     maxLoginAttempts: 5,
     lockTime: 30000,
   },
-  collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums],
+  collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums, Comments],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
