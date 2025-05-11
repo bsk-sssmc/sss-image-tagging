@@ -8,8 +8,8 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token') || request.cookies.get('payload-token');
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for API routes and static files
-  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.includes('.')) {
+  // Skip middleware only for static files
+  if (pathname.startsWith('/_next/') || pathname.includes('.')) {
     return NextResponse.next();
   }
 
@@ -18,9 +18,17 @@ export function middleware(request: NextRequest) {
 
   // Check if the path requires authentication
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
+  const isApiPath = pathname.startsWith('/api/');
 
-  if (isProtectedPath && !token) {
-    console.log('Middleware - Protected path without token, redirecting to login');
+  // For API routes and protected paths, require authentication
+  if ((isProtectedPath || isApiPath) && !token) {
+    console.log('Middleware - Protected/API path without token, redirecting to login');
+    if (isApiPath) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     // Redirect to login page if accessing protected route without token
     const url = new URL('/login', request.url);
     url.searchParams.set('from', pathname);

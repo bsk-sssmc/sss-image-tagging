@@ -161,4 +161,155 @@ export async function GET(req: Request) {
       { status: 500 }
     )
   }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const payload = await getPayload({
+      config: configPromise,
+    })
+
+    // Log request URL and details
+    console.log('PATCH request URL:', req.url);
+    
+    // Get the content type from headers
+    const contentType = req.headers.get('content-type') || '';
+    console.log('Content-Type:', contentType);
+    
+    let body;
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Handle form data
+      const formData = await req.formData();
+      const jsonData = formData.get('_payload');
+      if (typeof jsonData === 'string') {
+        try {
+          body = JSON.parse(jsonData);
+        } catch (parseError) {
+          console.error('Error parsing form data JSON:', parseError);
+          return NextResponse.json(
+            { message: 'Invalid JSON in form data' },
+            { status: 400 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { message: 'No JSON data found in form data' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Handle JSON data
+      const bodyText = await req.text();
+      console.log('Raw request body:', bodyText);
+      
+      try {
+        body = JSON.parse(bodyText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        return NextResponse.json(
+          { message: `Invalid JSON format: ${parseError instanceof Error ? parseError.message : 'Invalid JSON'}` },
+          { status: 400 }
+        );
+      }
+    }
+    
+    console.log('Parsed body:', body);
+
+    // Extract where conditions from URL if not in body
+    const url = new URL(req.url);
+    let where;
+    
+    // Check for where conditions in URL parameters
+    const whereParams: Record<string, any> = {};
+    
+    // Log all URL parameters for debugging
+    console.log('All URL parameters:');
+    for (const [key, value] of url.searchParams.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+
+    // Special handling for the specific format we're receiving
+    const whereAnd = url.searchParams.get('where[and][1][id][not_equals]');
+    if (whereAnd) {
+      where = {
+        and: [
+          {
+            id: {
+              not_equals: whereAnd
+            }
+          }
+        ]
+      };
+    } else {
+      // Fallback to parsing other where parameters
+      for (const [key, value] of url.searchParams.entries()) {
+        if (key.startsWith('where')) {
+          // Remove 'where' prefix and parse the remaining path
+          const path = key.replace('where', '').replace(/^\[|\]$/g, '');
+          const parts = path.split('][').map(part => part.replace(/[\[\]]/g, ''));
+          
+          // Build the where object
+          let current: Record<string, any> = whereParams;
+          for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (!current[part]) {
+              current[part] = {};
+            }
+            current = current[part];
+          }
+          current[parts[parts.length - 1]] = value;
+        }
+      }
+      
+      if (Object.keys(whereParams).length > 0) {
+        where = whereParams;
+      }
+    }
+
+    // If we still don't have where conditions, try to get them from body
+    if (!where || Object.keys(where).length === 0) {
+      where = body.where;
+    }
+
+    // If body is just a direct update object, wrap it in data
+    const data = body.data || body;
+
+    console.log('Final where conditions:', where);
+    console.log('Final update data:', data);
+
+    if (!where || Object.keys(where).length === 0) {
+      console.error('Missing where conditions');
+      return NextResponse.json(
+        { message: 'Missing where conditions. Please provide where conditions either in the URL or in the request body.' },
+        { status: 400 }
+      );
+    }
+
+    if (!data || Object.keys(data).length === 0) {
+      console.error('Missing data to update');
+      return NextResponse.json(
+        { message: 'Missing data to update. Please provide the fields you want to update.' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Updating comments with where:', where, 'and data:', data);
+
+    // Update all matching comments
+    const result = await payload.update({
+      collection: 'comments',
+      where,
+      data,
+    })
+
+    console.log('Update result:', result);
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Error updating comments:', error)
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : 'Failed to update comments' },
+      { status: 500 }
+    )
+  }
 } 

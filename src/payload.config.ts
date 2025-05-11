@@ -29,8 +29,7 @@ export default buildConfig({
     },
   },
   auth: {
-    maxLoginAttempts: 5,
-    lockTime: 30000,
+    jwtOrder: ['Bearer', 'cookie', 'JWT'],
   },
   collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums, Comments],
   editor: lexicalEditor(),
@@ -46,7 +45,12 @@ export default buildConfig({
     payloadCloudPlugin(),
     s3Storage({
       collections: {
-        media: true, // 'media' must match your Media collection slug
+        media: {
+          disableLocalStorage: true,
+          generateFileURL: ({ filename }) => {
+            return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${filename}`
+          },
+        },
       },
       bucket: process.env.S3_BUCKET!,
       config: {
@@ -55,8 +59,7 @@ export default buildConfig({
           secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
         },
         region: process.env.S3_REGION!,
-        endpoint: process.env.S3_ENDPOINT, // keep as-is if optional
-        // ... any other S3ClientConfig options ...
+        endpoint: process.env.S3_ENDPOINT,
       },
     }),
   ],

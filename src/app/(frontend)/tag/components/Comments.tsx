@@ -18,6 +18,7 @@ interface Comment {
   depth: number;
   image: string;
   updatedAt: string;
+  userVote?: 'upvote' | 'downvote' | null;
 }
 
 interface CommentsProps {
@@ -204,7 +205,10 @@ export default function Comments({ imageId }: CommentsProps) {
       const requestBody = {
         commentText: replyText,
         image: imageId,
-        parentComment: commentId,
+        parentComment: {
+          relationTo: 'comments',
+          value: commentId
+        },
         depth: newDepth,
       };
 
@@ -267,6 +271,102 @@ export default function Comments({ imageId }: CommentsProps) {
     }
   };
 
+  const handleVote = async (commentId: string, voteType: 'upvote' | 'downvote') => {
+    try {
+      console.log('Attempting to vote on comment:', { commentId, voteType });
+      
+      // Find the current comment
+      const currentComment = comments.find(c => c.id === commentId);
+      if (!currentComment) {
+        throw new Error('Comment not found');
+      }
+
+      // Calculate the vote change
+      let voteChange = 0;
+      if (currentComment.userVote === 'upvote' && voteType === 'downvote') {
+        // Changing from upvote to downvote: -2
+        voteChange = -2;
+      } else if (currentComment.userVote === 'downvote' && voteType === 'upvote') {
+        // Changing from downvote to upvote: +2
+        voteChange = 2;
+      } else if (!currentComment.userVote) {
+        // New vote: +1 or -1
+        voteChange = voteType === 'upvote' ? 1 : -1;
+      } else {
+        // Same vote type, do nothing
+        return;
+      }
+
+      // Optimistically update the UI
+      setComments(prevComments => 
+        prevComments.map(comment => {
+          if (comment.id === commentId) {
+            const newUpvotes = comment.commentUpvotes + (voteType === 'upvote' ? 1 : 0);
+            const newDownvotes = comment.commentDownvotes + (voteType === 'downvote' ? 1 : 0);
+            return {
+              ...comment,
+              commentUpvotes: newUpvotes,
+              commentDownvotes: newDownvotes,
+              userVote: voteType, // Update the user's vote
+            };
+          }
+          return comment;
+        })
+      );
+
+      const response = await fetch(`/api/comments/${commentId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          voteType,
+          previousVote: currentComment.userVote,
+          voteChange 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Vote request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        
+        // If the request fails, revert the optimistic update
+        setComments(prevComments => 
+          prevComments.map(comment => {
+            if (comment.id === commentId) {
+              return {
+                ...comment,
+                commentUpvotes: currentComment.commentUpvotes,
+                commentDownvotes: currentComment.commentDownvotes,
+                userVote: currentComment.userVote,
+              };
+            }
+            return comment;
+          })
+        );
+        throw new Error(errorData?.message || `Failed to vote on comment: ${response.statusText}`);
+      }
+
+      const updatedComment = await response.json();
+      console.log('Successfully voted on comment:', updatedComment);
+
+      // Update the comment with the server response
+      setComments(prevComments => 
+        prevComments.map(comment => 
+          comment.id === commentId ? { ...updatedComment, userVote: voteType } : comment
+        )
+      );
+    } catch (error) {
+      console.error('Error voting on comment:', error);
+      alert('Failed to vote on comment. Please try again later.');
+    }
+  };
+
   return (
     <div className="comments-section">
       <h3 className="comments-heading">Comments {comments.length > 0 && `(${comments.length})`}</h3>
@@ -311,6 +411,7 @@ export default function Comments({ imageId }: CommentsProps) {
               replyingTo={replyingTo}
               onCancelReply={handleCancelReply}
               onSubmitReply={handleSubmitReply}
+              onVote={handleVote}
             />
           ))
         )}

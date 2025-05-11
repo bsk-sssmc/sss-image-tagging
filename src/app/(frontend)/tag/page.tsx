@@ -11,6 +11,7 @@ import Cookies from 'js-cookie';
 interface Media {
   id: string;
   url: string;
+  signedUrl: string;
   alt?: string;
 }
 
@@ -104,8 +105,8 @@ export default function TagPage() {
   }, [router, imageId]);
 
   const handleImageClick = () => {
-    if (currentImage?.url) {
-      setSelectedImage(currentImage.url);
+    if (currentImage?.signedUrl) {
+      setSelectedImage(currentImage.signedUrl);
       setIsModalOpen(true);
     }
   };
@@ -145,13 +146,13 @@ export default function TagPage() {
               <div className="loading-overlay">
                 <div className="loading-spinner"></div>
               </div>
-            ) : currentImage?.url ? (
+            ) : currentImage?.signedUrl ? (
               <div 
                 className="image-click-area"
                 onClick={handleImageClick}
               >
                 <Image
-                  src={currentImage.url}
+                  src={currentImage.signedUrl}
                   alt={currentImage.alt || 'Image to tag'}
                   fill
                   style={{ objectFit: 'contain', userSelect: 'none', WebkitUserSelect: 'none' }}

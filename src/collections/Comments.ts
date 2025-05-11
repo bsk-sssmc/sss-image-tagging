@@ -64,6 +64,17 @@ const Comments: CollectionConfig = {
       min: 0,
     },
     {
+      name: 'userVote',
+      type: 'select',
+      options: [
+        { label: 'Upvote', value: 'upvote' },
+        { label: 'Downvote', value: 'downvote' },
+      ],
+      admin: {
+        description: 'The current user\'s vote on this comment',
+      },
+    },
+    {
       name: 'parentComment',
       type: 'relationship',
       relationTo: ['comments'],

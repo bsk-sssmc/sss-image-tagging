@@ -6,6 +6,29 @@ export const Media: CollectionConfig = {
   access: {
     read: () => true,
   },
+  upload: {
+    disableLocalStorage: true,
+    imageSizes: [
+      {
+        name: 'thumbnail',
+        width: 400,
+        height: 300,
+        position: 'centre',
+      },
+      {
+        name: 'card',
+        width: 768,
+        height: 1024,
+        position: 'centre',
+      },
+    ],
+    formatOptions: {
+      format: 'webp',
+      options: {
+        effort: 6,
+      },
+    },
+  },
   fields: [
     {
       name: 'mediaId',
@@ -51,5 +74,4 @@ export const Media: CollectionConfig = {
       type: 'text',
     },
   ],
-  upload: true,
 }

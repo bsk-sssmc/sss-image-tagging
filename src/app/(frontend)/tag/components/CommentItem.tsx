@@ -13,14 +13,16 @@ interface CommentItemProps {
     commentUpvotes: number;
     commentDownvotes: number;
     depth: number;
+    userVote?: 'upvote' | 'downvote' | null;
   };
   onReply: (commentId: string) => void;
   replyingTo: string | null;
   onCancelReply: () => void;
   onSubmitReply: (commentId: string, replyText: string) => void;
+  onVote: (commentId: string, voteType: 'upvote' | 'downvote') => void;
 }
 
-export default function CommentItem({ comment, onReply, replyingTo, onCancelReply, onSubmitReply }: CommentItemProps) {
+export default function CommentItem({ comment, onReply, replyingTo, onCancelReply, onSubmitReply, onVote }: CommentItemProps) {
   const [isHovering, setIsHovering] = useState(false);
   const [replyText, setReplyText] = useState('');
   const voteDifference = comment.commentUpvotes - comment.commentDownvotes;
@@ -57,6 +59,10 @@ export default function CommentItem({ comment, onReply, replyingTo, onCancelRepl
     }
   };
 
+  const handleVote = (voteType: 'upvote' | 'downvote') => {
+    onVote(comment.id, voteType);
+  };
+
   return (
     <div 
       className="comment-item"
@@ -81,12 +87,15 @@ export default function CommentItem({ comment, onReply, replyingTo, onCancelRepl
       >
         <button 
           className="vote-button"
+          onClick={() => handleVote('upvote')}
+          disabled={comment.userVote === 'upvote'}
           style={{
             background: 'none',
             border: 'none',
-            cursor: 'pointer',
+            cursor: comment.userVote === 'upvote' ? 'default' : 'pointer',
             padding: '0.25rem',
-            color: '#666'
+            color: comment.userVote === 'upvote' ? '#4CAF50' : '#666',
+            opacity: comment.userVote === 'upvote' ? 0.5 : 1
           }}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -105,12 +114,15 @@ export default function CommentItem({ comment, onReply, replyingTo, onCancelRepl
         
         <button 
           className="vote-button"
+          onClick={() => handleVote('downvote')}
+          disabled={comment.userVote === 'downvote'}
           style={{
             background: 'none',
             border: 'none',
-            cursor: 'pointer',
+            cursor: comment.userVote === 'downvote' ? 'default' : 'pointer',
             padding: '0.25rem',
-            color: '#666'
+            color: comment.userVote === 'downvote' ? '#f44336' : '#666',
+            opacity: comment.userVote === 'downvote' ? 0.5 : 1
           }}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">

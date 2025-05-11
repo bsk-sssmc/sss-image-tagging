@@ -48,8 +48,15 @@ export async function POST(req: Request) {
         redirectTo: from 
       })
 
-      // Set the token cookie explicitly
+      // Set both token cookies to ensure compatibility
       response.cookies.set('payload-token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      })
+      
+      response.cookies.set('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
