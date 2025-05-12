@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
 import NotificationPopup from '../../components/NotificationPopup';
+import CreateEntryModal from './CreateEntryModal';
 
 interface Person {
   id: string;
@@ -20,11 +21,20 @@ interface Occasion {
   name: string;
 }
 
-interface TagFormProps {
-  onSubmit: (formData: any) => void;
+interface Pin {
+  id: string;
+  x: number;
+  y: number;
+  personId?: string;
+  confidence?: string;
 }
 
-export default function TagForm({ onSubmit }: TagFormProps) {
+interface TagFormProps {
+  onSubmit: (formData: any) => void;
+  currentImageUrl?: string;
+}
+
+export default function TagForm({ onSubmit, currentImageUrl }: TagFormProps) {
   // State for form fields
   const [selectedPersons, setSelectedPersons] = useState<Person[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -33,12 +43,13 @@ export default function TagForm({ onSubmit }: TagFormProps) {
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
   const [occasionConfidence, setOccasionConfidence] = useState('3');
   const [occasionHoverRating, setOccasionHoverRating] = useState(0);
-  const [dateType, setDateType] = useState('full');
+  const [dateType, setDateType] = useState('full_date');
   const [dateValue, setDateValue] = useState('');
   const [dateConfidence, setDateConfidence] = useState('3');
   const [dateHoverRating, setDateHoverRating] = useState(0);
   const [context, setContext] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
+  const [pins, setPins] = useState<Pin[]>([]);
 
   // State for dropdowns
   const [persons, setPersons] = useState<Person[]>([]);
@@ -65,6 +76,11 @@ export default function TagForm({ onSubmit }: TagFormProps) {
   const locationDropdownRef = useRef<HTMLDivElement>(null);
   const occasionDropdownRef = useRef<HTMLDivElement>(null);
   const personsDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Add new state for modals
+  const [isCreatePersonModalOpen, setIsCreatePersonModalOpen] = useState(false);
+  const [isCreateLocationModalOpen, setIsCreateLocationModalOpen] = useState(false);
+  const [isCreateOccasionModalOpen, setIsCreateOccasionModalOpen] = useState(false);
 
   const router = useRouter();
 
@@ -103,6 +119,32 @@ export default function TagForm({ onSubmit }: TagFormProps) {
     fetchData();
   }, []);
 
+  // Add event listener for pin updates
+  useEffect(() => {
+    const handlePinUpdate = (event: CustomEvent) => {
+      const updatedPins = event.detail.pins;
+      setPins(updatedPins);
+      
+      // Update selectedPersons based on pins
+      const personIds = updatedPins
+        .filter((pin: Pin) => pin.personId)
+        .map((pin: Pin) => pin.personId);
+      
+      // Filter out duplicates
+      const uniquePersonIds = [...new Set(personIds)];
+      
+      // Update selectedPersons with the new list
+      setSelectedPersons(persons.filter(person => 
+        uniquePersonIds.includes(person.id)
+      ));
+    };
+
+    window.addEventListener('pinUpdate', handlePinUpdate as EventListener);
+    return () => {
+      window.removeEventListener('pinUpdate', handlePinUpdate as EventListener);
+    };
+  }, [persons]);
+
   // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -132,7 +174,18 @@ export default function TagForm({ onSubmit }: TagFormProps) {
   };
 
   const handlePersonRemove = (personId: string) => {
-    setSelectedPersons(selectedPersons.filter(p => p.id !== personId));
+    // Remove person from selectedPersons
+    setSelectedPersons(prev => prev.filter(person => person.id !== personId));
+    
+    // Remove corresponding pin
+    const updatedPins = pins.filter(pin => pin.personId !== personId);
+    setPins(updatedPins);
+    
+    // Dispatch event to update pins in ImageModal
+    const event = new CustomEvent('pinUpdate', { 
+      detail: { pins: updatedPins }
+    });
+    window.dispatchEvent(event);
   };
 
   const handleLocationSelect = (location: Location | null) => {
@@ -170,97 +223,66 @@ export default function TagForm({ onSubmit }: TagFormProps) {
     setError(null);
 
     try {
-      // Get the current image ID from the URL
-      const imageId = window.location.search.split('=')[1];
-      if (!imageId) {
-        throw new Error('No image ID found');
-      }
-
-      // First, get the current user's ID
-      const meResponse = await fetch('/api/users/me', {
-        credentials: 'include',
-      });
-
-      if (!meResponse.ok) {
-        throw new Error('Failed to get current user');
-      }
-
-      const { user } = await meResponse.json();
-      if (!user?.id) {
-        throw new Error('No user ID found');
-      }
-
-      // Prepare the form data according to Payload's expected format
-      const formData = {
-        whenType: dateType === 'full' ? 'full_date' : 
-                  dateType === 'decade' ? 'decades' : 
-                  dateType === 'year' ? 'year' : 'month_year',
-        whenValue: dateValue,
-        whenValueConfidence: dateConfidence,
-        mediaId: imageId,
-        persons: selectedPersons.map(person => person.id),
-        location: selectedLocation?.id || null,
-        locationConfidence: locationConfidence,
-        occasion: selectedOccasion?.id || null,
-        occasionConfidence: occasionConfidence,
-        context: context.trim(),
-        remarks: remarks.trim(),
-        createdBy: user.id,
-      };
-
-      console.log('Submitting form data:', formData);
-
-      // Submit the form data
-      const response = await fetch('/api/image-tags', {
+      // First create the image tag
+      const imageTagResponse = await fetch('/api/image-tags', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          whenType: dateType || undefined,
+          whenValue: dateValue || undefined,
+          whenValueConfidence: dateConfidence,
+          mediaId: currentImageUrl,
+          persons: selectedPersons.map(p => p.id),
+          location: selectedLocation?.id,
+          locationConfidence,
+          occasion: selectedOccasion?.id,
+          occasionConfidence,
+          context,
+          remarks,
+        }),
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('401 response, redirecting to login...');
-          const from = encodeURIComponent('/tag');
-          router.push(`/login?from=${from}`);
-          return;
-        }
-        
-        const errorData = await response.json();
-        console.error('Error response:', errorData);
-        throw new Error(errorData.errors?.[0]?.message || 'Failed to submit form');
+      if (!imageTagResponse.ok) {
+        throw new Error('Failed to create image tag');
       }
 
-      const data = await response.json();
-      console.log('Successfully created image tag:', data);
+      const imageTagData = await imageTagResponse.json();
 
-      // Show success notification
+      // Then create person tags for each pin
+      const personTagPromises = pins
+        .filter(pin => pin.personId)
+        .map(pin => 
+          fetch('/api/person-tags', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              mediaId: currentImageUrl,
+              personId: pin.personId,
+              confidence: pin.confidence || '3',
+              coordinates: {
+                x: pin.x,
+                y: pin.y,
+              },
+            }),
+          })
+        );
+
+      await Promise.all(personTagPromises);
+
+      setShowNotification(true);
       setNotificationType('success');
-      setNotificationMessage('Image tagged successfully!');
-      setShowNotification(true);
-
-      // Clear form
-      setDateType('full');
-      setDateValue('');
-      setSelectedPersons([]);
-      setSelectedLocation(null);
-      setSelectedOccasion(null);
-      setContext('');
-      setRemarks('');
-      setSearchTerm('');
-      setLocationInput('');
-      setOccasionInput('');
-
-      // Notify parent component
-      onSubmit(data);
+      setNotificationMessage('Tags submitted successfully!');
     } catch (error) {
-      console.error('Form submission error:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred');
-      setNotificationType('error');
-      setNotificationMessage(error instanceof Error ? error.message : 'Failed to submit form');
+      console.error('Error submitting tags:', error);
       setShowNotification(true);
+      setNotificationType('error');
+      setNotificationMessage('Failed to submit tags. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -290,6 +312,102 @@ export default function TagForm({ onSubmit }: TagFormProps) {
     );
   };
 
+  const handleCreatePerson = async (data: any) => {
+    try {
+      const response = await fetch('/api/persons', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create person');
+      }
+
+      const responseData = await response.json();
+      // PayloadCMS returns the created document in the 'doc' property
+      const newPerson = responseData.doc;
+      
+      if (!newPerson || !newPerson.id) {
+        throw new Error('Invalid response format from server');
+      }
+
+      setPersons(prev => [...prev, newPerson]);
+      handlePersonSelect(newPerson);
+      setIsCreatePersonModalOpen(false);
+    } catch (error) {
+      console.error('Error creating person:', error);
+      throw error;
+    }
+  };
+
+  const handleCreateLocation = async (data: any) => {
+    try {
+      const response = await fetch('/api/locations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create location');
+      }
+
+      const responseData = await response.json();
+      // PayloadCMS returns the created document in the 'doc' property
+      const newLocation = responseData.doc;
+      
+      if (!newLocation || !newLocation.id) {
+        throw new Error('Invalid response format from server');
+      }
+
+      setLocations(prev => [...prev, newLocation]);
+      handleLocationSelect(newLocation);
+      setIsCreateLocationModalOpen(false);
+    } catch (error) {
+      console.error('Error creating location:', error);
+      throw error;
+    }
+  };
+
+  const handleCreateOccasion = async (data: any) => {
+    try {
+      const response = await fetch('/api/occasions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create occasion');
+      }
+
+      const responseData = await response.json();
+      // PayloadCMS returns the created document in the 'doc' property
+      const newOccasion = responseData.doc;
+      
+      if (!newOccasion || !newOccasion.id) {
+        throw new Error('Invalid response format from server');
+      }
+
+      setOccasions(prev => [...prev, newOccasion]);
+      handleOccasionSelect(newOccasion);
+      setIsCreateOccasionModalOpen(false);
+    } catch (error) {
+      console.error('Error creating occasion:', error);
+      throw error;
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="tag-form">
       <h2>Tag Image</h2>
@@ -317,42 +435,64 @@ export default function TagForm({ onSubmit }: TagFormProps) {
       {/* Persons Input */}
       <div className="form-group">
         <label>Who are in the image?</label>
-        <div className="dropdown-container" ref={personsDropdownRef}>
-          <input
-            type="text"
-            className="dropdown-input"
-            placeholder="Search and select persons..."
-            value={searchTerm}
-            onChange={handlePersonInputChange}
-            onFocus={() => setIsPersonsDropdownOpen(true)}
-          />
-          {isPersonsDropdownOpen && (
-            <div className="dropdown-list">
-              {filteredPersons.map(person => (
-                <div
-                  key={person.id}
-                  className="dropdown-item"
-                  onClick={() => handlePersonSelect(person)}
-                >
-                  {person.name}
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="input-group">
+          <button
+            type="button"
+            className="add-people-button"
+            onClick={() => {
+              if (currentImageUrl) {
+                window.dispatchEvent(new CustomEvent('openImageModal', { 
+                  detail: { 
+                    imageUrl: currentImageUrl,
+                    pins: pins
+                  } 
+                }));
+              }
+            }}
+          >
+            Add People
+          </button>
         </div>
-        <div className="pill-container">
-          {selectedPersons.map(person => (
-            <div key={person.id} className="pill">
-              {person.name}
-              <button
-                type="button"
-                onClick={() => handlePersonRemove(person.id)}
-                aria-label={`Remove ${person.name}`}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+        <div className="person-tag-rows">
+          {selectedPersons.map(person => {
+            const pin = pins.find(p => p.personId === person.id);
+            return (
+              <div key={person.id} className="person-tag-row">
+                <span className="person-tag-name">{person.name}</span>
+                <div className="person-tag-rating">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <span
+                      key={rating}
+                      className={`star ${pin?.confidence === rating.toString() ? 'filled' : ''}`}
+                      onClick={() => {
+                        const updatedPins = pins.map(p => 
+                          p.personId === person.id 
+                            ? { ...p, confidence: rating.toString() }
+                            : p
+                        );
+                        setPins(updatedPins);
+                        window.dispatchEvent(new CustomEvent('pinUpdate', { 
+                          detail: { pins: updatedPins }
+                        }));
+                      }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="person-tag-remove"
+                  onClick={() => handlePersonRemove(person.id)}
+                  aria-label={`Remove ${person.name}`}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -377,14 +517,26 @@ export default function TagForm({ onSubmit }: TagFormProps) {
           )}
         </div>
         <div className="dropdown-container" ref={locationDropdownRef}>
-          <input
-            type="text"
-            className="dropdown-input"
-            placeholder="Search and select location..."
-            value={locationInput}
-            onChange={handleLocationInputChange}
-            onFocus={() => setIsLocationsDropdownOpen(true)}
-          />
+          <div className="input-group">
+            <input
+              type="text"
+              className="dropdown-input"
+              placeholder="Search and select location..."
+              value={locationInput}
+              onChange={handleLocationInputChange}
+              onFocus={() => setIsLocationsDropdownOpen(true)}
+            />
+            <button
+              type="button"
+              className="add-button"
+              onClick={() => setIsCreateLocationModalOpen(true)}
+              aria-label="Add new location"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
           {isLocationsDropdownOpen && (
             <div className="dropdown-list">
               {filteredLocations.map(location => (
@@ -422,14 +574,26 @@ export default function TagForm({ onSubmit }: TagFormProps) {
           )}
         </div>
         <div className="dropdown-container" ref={occasionDropdownRef}>
-          <input
-            type="text"
-            className="dropdown-input"
-            placeholder="Search and select occasion..."
-            value={occasionInput}
-            onChange={handleOccasionInputChange}
-            onFocus={() => setIsOccasionsDropdownOpen(true)}
-          />
+          <div className="input-group">
+            <input
+              type="text"
+              className="dropdown-input"
+              placeholder="Search and select occasion..."
+              value={occasionInput}
+              onChange={handleOccasionInputChange}
+              onFocus={() => setIsOccasionsDropdownOpen(true)}
+            />
+            <button
+              type="button"
+              className="add-button"
+              onClick={() => setIsCreateOccasionModalOpen(true)}
+              aria-label="Add new occasion"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
           {isOccasionsDropdownOpen && (
             <div className="dropdown-list">
               {filteredOccasions.map(occasion => (
@@ -472,27 +636,30 @@ export default function TagForm({ onSubmit }: TagFormProps) {
             onChange={(e) => setDateType(e.target.value)}
             className="date-type-select"
           >
-            <option value="full">Full Date</option>
-            <option value="decade">Decade</option>
+            <option value="">Select an option</option>
+            <option value="full_date">Full Date</option>
+            <option value="decades">Decade</option>
             <option value="year">Year</option>
             <option value="month_year">Month-Year</option>
           </select>
         </div>
-        <input
-          type="text"
-          value={dateValue}
-          onChange={(e) => setDateValue(e.target.value)}
-          placeholder={
-            dateType === 'full'
-              ? 'YYYY-MM-DD'
-              : dateType === 'decade'
-              ? 'e.g., 1980s'
-              : dateType === 'year'
-              ? 'YYYY'
-              : 'YYYY-MM'
-          }
-          className="date-input"
-        />
+        {dateType && (
+          <input
+            type="text"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+            placeholder={
+              dateType === 'full_date'
+                ? 'YYYY-MM-DD'
+                : dateType === 'decades'
+                ? 'e.g., 1980s'
+                : dateType === 'year'
+                ? 'YYYY'
+                : 'YYYY-MM'
+            }
+            className="date-input"
+          />
+        )}
       </div>
 
       {/* Context Input */}
@@ -522,6 +689,28 @@ export default function TagForm({ onSubmit }: TagFormProps) {
       >
         Submit Tags
       </button>
+
+      {/* Create Entry Modals */}
+      <CreateEntryModal
+        isOpen={isCreatePersonModalOpen}
+        onClose={() => setIsCreatePersonModalOpen(false)}
+        type="person"
+        onSubmit={handleCreatePerson}
+      />
+
+      <CreateEntryModal
+        isOpen={isCreateLocationModalOpen}
+        onClose={() => setIsCreateLocationModalOpen(false)}
+        type="location"
+        onSubmit={handleCreateLocation}
+      />
+
+      <CreateEntryModal
+        isOpen={isCreateOccasionModalOpen}
+        onClose={() => setIsCreateOccasionModalOpen(false)}
+        type="occasion"
+        onSubmit={handleCreateOccasion}
+      />
     </form>
   );
 } 

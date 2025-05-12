@@ -1,6 +1,5 @@
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
-import { generateSignedUrl, getKeyFromUrl } from '@/lib/s3'
 
 // Store the list of shown image IDs in memory
 let shownImageIds: string[] = [];
@@ -41,15 +40,7 @@ export async function GET() {
     // Add the selected image ID to shown images
     shownImageIds.push(randomImage.id);
 
-    // Generate signed URL for the image
-    const key = getKeyFromUrl(randomImage.url);
-    const signedUrl = await generateSignedUrl(key);
-
-    // Return the image data with the signed URL
-    return Response.json({
-      ...randomImage,
-      signedUrl,
-    })
+    return Response.json(randomImage)
   } catch (error) {
     console.error('Error fetching random image:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })

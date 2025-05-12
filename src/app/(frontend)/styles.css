@@ -512,61 +512,313 @@ h1 {
 /* Image Modal Styles */
 .modal-overlay {
   position: fixed;
-  inset: 0;
-  z-index: 50;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  z-index: 1000;
+  cursor: pointer;
 }
 
 .modal-content {
   position: relative;
-  width: 85vw;
-  height: 85vh;
+  width: 90%;
+  height: 90vh;
+  max-width: 1200px;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+}
+
+.modal-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .modal-instructions {
   position: absolute;
-  top: -3rem;
+  top: 1rem;
   left: 50%;
   transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
   color: white;
-  font-size: 1rem;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.5);
   padding: 0.5rem 1rem;
   border-radius: 4px;
+  font-size: 0.875rem;
+  z-index: 1;
   white-space: nowrap;
 }
 
 .modal-close {
-  position: absolute;
-  top: -3rem;
-  right: 0;
-  color: white;
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid white;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  position: relative;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 60;
+  transition: color 0.2s ease;
+  margin-left: 0.5rem;
 }
 
 .modal-close:hover {
-  background: white;
-  color: black;
-  transform: scale(1.1);
+  color: #fff;
 }
 
-.modal-close svg {
+/* Create Entry Modal Specific Styles */
+.create-entry-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.create-entry-modal-content {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-right: 2rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.modal-header .modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.create-entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.create-entry-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.create-entry-form label {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.create-entry-form input,
+.create-entry-form textarea,
+.create-entry-form select {
+  padding: 0.75rem;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease;
+}
+
+.create-entry-form input:focus,
+.create-entry-form textarea:focus,
+.create-entry-form select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.create-entry-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.modal-actions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 1;
+  align-items: center;
+}
+
+.modal-action-button {
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.modal-action-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.modal-action-button.cancel {
+  background: rgba(220, 53, 69, 0.8);
+}
+
+.modal-action-button.cancel:hover {
+  background: rgba(220, 53, 69, 0.9);
+}
+
+.modal-image-container.placing-pin {
+  cursor: crosshair;
+}
+
+.pin {
+  position: absolute;
   width: 24px;
   height: 24px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.pin:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  z-index: 2;
+}
+
+.pin::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 24px;
+  background: #ff4444;
+  transition: height 0.2s ease;
+  pointer-events: none;
+}
+
+.pin:hover::before {
+  height: 28px;
+}
+
+.pin::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: #ff4444;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+.pin:hover::after {
+  transform: translateX(-50%) scale(1.2);
+}
+
+.pin-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  margin-bottom: 0.5rem;
+  z-index: 3;
+}
+
+.pin:hover .pin-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.pin-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+  pointer-events: none;
+}
+
+/* Add button styles */
+.add-button {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.add-button:hover {
+  color: #0056b3;
+}
+
+.add-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Input group with add button */
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.input-group input {
+  flex: 1;
 }
 
 /* Navbar Styles */
@@ -1087,4 +1339,330 @@ h1 {
   to {
     transform: rotate(360deg);
   }
+}
+
+.add-people-button {
+  width: 100%;
+  padding: 0.75rem;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-people-button:hover {
+  background: #357abd;
+}
+
+/* Pin Menu Styles */
+.pin-menu {
+  position: absolute;
+  background: #2a2a2a;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 300px;
+  max-width: 400px;
+  z-index: 2;
+  transition: transform 0.2s ease;
+  pointer-events: auto;
+}
+
+/* Add arrow indicators for different positions */
+.pin-menu::before {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  pointer-events: none;
+}
+
+/* Arrow for menu above pin */
+.pin-menu[style*="translate(-50%, -100%)"]::before {
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-top-color: #2a2a2a;
+}
+
+/* Arrow for menu below pin */
+.pin-menu[style*="translate(-50%, 0%)"]::before {
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-bottom-color: #2a2a2a;
+}
+
+/* Arrow for menu to the right of pin */
+.pin-menu[style*="translate(0%, -50%)"]::before {
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-right-color: #2a2a2a;
+}
+
+/* Arrow for menu to the left of pin */
+.pin-menu[style*="translate(-100%, -50%)"]::before {
+  right: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left-color: #2a2a2a;
+}
+
+/* No arrow for centered menu */
+.pin-menu[style*="translate(-50%, -50%)"]::before {
+  display: none;
+}
+
+.pin-menu-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.pin-menu-close:hover {
+  color: #fff;
+}
+
+.pin-menu-content {
+  padding: 1rem;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pin-menu-search {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pin-menu-search input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background: #333;
+  color: white;
+  font-size: 0.875rem;
+}
+
+.pin-menu-search input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.pin-menu-list {
+  max-height: 300px;
+  overflow-y: auto;
+  flex: 1;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  background: #333;
+}
+
+.pin-menu-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.pin-menu-list::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+.pin-menu-list::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+.pin-menu-list::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+.pin-menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #404040;
+  transition: background-color 0.2s ease;
+}
+
+.pin-menu-item:last-child {
+  border-bottom: none;
+}
+
+.pin-menu-item:hover {
+  background: #404040;
+}
+
+.pin-menu-item.selected {
+  background: #4a90e2;
+  color: white;
+}
+
+.pin-menu-item .star-rating {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.pin-menu-item .star {
+  font-size: 1.25rem;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.pin-menu-item .star.filled {
+  color: #ffd700;
+}
+
+.pin-menu-item .star:hover {
+  color: #ffd700;
+}
+
+.pin-menu-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.add-person-button {
+  flex: 1;
+  padding: 0.5rem;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.add-person-button:hover {
+  background: #357abd;
+}
+
+.add-person-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.delete-pin-button {
+  padding: 0.5rem 0.75rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.delete-pin-button:hover {
+  background: #c82333;
+}
+
+.pin.selected {
+  z-index: 1;
+}
+
+.pin.selected::after {
+  box-shadow: 0 0 0 3px #4a90e2;
+}
+
+.pin-menu-person {
+  flex: 1;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+/* Person Tag Rows */
+.person-tag-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.person-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: #333;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.person-tag-row:hover {
+  background: #404040;
+}
+
+.person-tag-name {
+  flex: 1;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.person-tag-rating {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.person-tag-rating .star {
+  font-size: 1.25rem;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.person-tag-rating .star.filled {
+  color: #ffd700;
+}
+
+.person-tag-rating .star:hover {
+  color: #ffd700;
+}
+
+.person-tag-remove {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.person-tag-remove:hover {
+  color: #ff4444;
 }

@@ -7,6 +7,9 @@ const ImageTags: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: () => true,
+    update: () => true,
+    delete: () => true,
   },
   fields: [
     {
@@ -15,6 +18,10 @@ const ImageTags: CollectionConfig = {
       label: 'When Type',
       description: 'Type of date information',
       options: [
+        {
+          label: 'Select an option',
+          value: '',
+        },
         {
           label: 'Full Date',
           value: 'full_date',
@@ -32,14 +39,13 @@ const ImageTags: CollectionConfig = {
           value: 'month_year',
         },
       ],
-      required: true,
+      defaultValue: '',
     },
     {
       name: 'whenValue',
       type: 'text',
       label: 'When Value',
       description: 'Value received from frontend form',
-      required: true,
     },
     {
       name: 'whenValueConfidence',
@@ -132,6 +138,19 @@ const ImageTags: CollectionConfig = {
       required: true,
       admin: {
         readOnly: true,
+      },
+      hooks: {
+        beforeChange: [
+          ({ value, operation, req }) => {
+            if (operation === 'create') {
+              if (!req.user) {
+                throw new Error('User must be authenticated to create an image tag');
+              }
+              return req.user.id;
+            }
+            return value;
+          },
+        ],
       },
     },
   ],

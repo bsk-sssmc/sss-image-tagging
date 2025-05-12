@@ -11,7 +11,6 @@ import Cookies from 'js-cookie';
 interface Media {
   id: string;
   url: string;
-  signedUrl: string;
   alt?: string;
 }
 
@@ -54,6 +53,18 @@ export default function TagPage() {
 
     checkAuth();
   }, [router, imageId]);
+
+  useEffect(() => {
+    const handleOpenImageModal = (event: CustomEvent) => {
+      setSelectedImage(event.detail.imageUrl);
+      setIsModalOpen(true);
+    };
+
+    window.addEventListener('openImageModal', handleOpenImageModal as EventListener);
+    return () => {
+      window.removeEventListener('openImageModal', handleOpenImageModal as EventListener);
+    };
+  }, []);
 
   const fetchSpecificImage = async (id: string) => {
     setIsLoading(true);
@@ -105,8 +116,8 @@ export default function TagPage() {
   }, [router, imageId]);
 
   const handleImageClick = () => {
-    if (currentImage?.signedUrl) {
-      setSelectedImage(currentImage.signedUrl);
+    if (currentImage?.url) {
+      setSelectedImage(currentImage.url);
       setIsModalOpen(true);
     }
   };
@@ -146,13 +157,13 @@ export default function TagPage() {
               <div className="loading-overlay">
                 <div className="loading-spinner"></div>
               </div>
-            ) : currentImage?.signedUrl ? (
+            ) : currentImage?.url ? (
               <div 
                 className="image-click-area"
                 onClick={handleImageClick}
               >
                 <Image
-                  src={currentImage.signedUrl}
+                  src={currentImage.url}
                   alt={currentImage.alt || 'Image to tag'}
                   fill
                   style={{ objectFit: 'contain', userSelect: 'none', WebkitUserSelect: 'none' }}
@@ -184,7 +195,10 @@ export default function TagPage() {
 
         {/* Right Column - Form */}
         <div className="right-column">
-          <TagForm onSubmit={handleFormSubmit} />
+          <TagForm 
+            onSubmit={handleFormSubmit} 
+            currentImageUrl={currentImage?.url}
+          />
         </div>
       </div>
 

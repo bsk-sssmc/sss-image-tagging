@@ -75,6 +75,7 @@ export interface Config {
     'image-tags': ImageTag;
     albums: Album;
     comments: Comment;
+    'person-tags': PersonTag;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -89,6 +90,7 @@ export interface Config {
     'image-tags': ImageTagsSelect<false> | ImageTagsSelect<true>;
     albums: AlbumsSelect<false> | AlbumsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
+    'person-tags': PersonTagsSelect<false> | PersonTagsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -263,8 +265,8 @@ export interface Person {
  */
 export interface ImageTag {
   id: string;
-  whenType: 'full_date' | 'decades' | 'year' | 'month_year';
-  whenValue: string;
+  whenType?: ('' | 'full_date' | 'decades' | 'year' | 'month_year') | null;
+  whenValue?: string | null;
   whenValueConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   mediaId: string | Media;
   persons?: (string | Person)[] | null;
@@ -322,6 +324,23 @@ export interface Comment {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "person-tags".
+ */
+export interface PersonTag {
+  id: string;
+  mediaId: string | Media;
+  personId: string | Person;
+  confidence?: ('1' | '2' | '3' | '4' | '5') | null;
+  coordinates: {
+    x: number;
+    y: number;
+  };
+  createdBy: string | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -358,6 +377,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'comments';
         value: string | Comment;
+      } | null)
+    | ({
+        relationTo: 'person-tags';
+        value: string | PersonTag;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -543,6 +566,24 @@ export interface CommentsSelect<T extends boolean = true> {
   parentComment?: T;
   depth?: T;
   updatedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "person-tags_select".
+ */
+export interface PersonTagsSelect<T extends boolean = true> {
+  mediaId?: T;
+  personId?: T;
+  confidence?: T;
+  coordinates?:
+    | T
+    | {
+        x?: T;
+        y?: T;
+      };
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

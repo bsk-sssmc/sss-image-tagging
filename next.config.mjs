@@ -27,6 +27,17 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+    return config;
+  },
 }
 
-export default withPayload(nextConfig, { devBundleServerPackages: false })
+export default withPayload(nextConfig, { 
+  devBundleServerPackages: false,
+  // Add this to ensure proper bundling of PayloadCMS UI
+  transpilePackages: ['@payloadcms/ui']
+})

@@ -7,6 +7,9 @@ export const Occasions: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: () => true,
+    update: () => true,
+    delete: () => true,
   },
   fields: [
     {
