@@ -9,6 +9,7 @@ export default function AuthForms() {
   const [error, setError] = useState('')
   const [showDisplayNameForm, setShowDisplayNameForm] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { setUser, checkAuth } = useAuth()
 
@@ -41,6 +42,7 @@ export default function AuthForms() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setIsLoading(true)
     
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
@@ -90,6 +92,8 @@ export default function AuthForms() {
     } catch (err) {
       console.error('Login error:', err)
       setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -190,18 +194,25 @@ export default function AuthForms() {
       {error && <div className="error-message">{error}</div>}
       
       {/* Login Form */}
-      <form className="auth-form" style={{ display: showRegister ? 'none' : 'block' }} onSubmit={handleLogin}>
+      <form className="auth-form" style={{ display: showRegister ? 'none' : 'block', position: 'relative' }} onSubmit={handleLogin}>
         <h2>Login</h2>
         <div className="form-group">
-          <input type="email" name="email" placeholder="Email" required />
+          <input type="email" name="email" placeholder="Email" required disabled={isLoading} />
         </div>
         <div className="form-group">
-          <input type="password" name="password" placeholder="Password" required />
+          <input type="password" name="password" placeholder="Password" required disabled={isLoading} />
         </div>
-        <button type="submit" className="auth-button">Login</button>
+        <button type="submit" className="auth-button" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
         <p className="switch-form">
           New user? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(true) }}>Register here</a>
         </p>
+        {isLoading && (
+          <div className="loading-overlay">
+            <div className="loading-spinner" />
+          </div>
+        )}
       </form>
 
       {/* Registration Form */}

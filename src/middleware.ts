@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // List of paths that require authentication
-const protectedPaths = ['/tag'];
+const protectedPaths = ['/tag', '/gallery'];
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token') || request.cookies.get('payload-token');
   const { pathname } = request.nextUrl;
 
-  // Skip middleware only for static files
-  if (pathname.startsWith('/_next/') || pathname.includes('.')) {
+  // Skip middleware for static files and login page
+  if (pathname.startsWith('/_next/') || pathname.includes('.') || pathname === '/login') {
     return NextResponse.next();
   }
 
@@ -19,6 +19,7 @@ export function middleware(request: NextRequest) {
   // Check if the path requires authentication
   const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
   const isApiPath = pathname.startsWith('/api/');
+  const isRootPath = pathname === '/';
 
   // For API routes and protected paths, require authentication
   if ((isProtectedPath || isApiPath) && !token) {
@@ -38,6 +39,18 @@ export function middleware(request: NextRequest) {
   // If we have a token and we're on the login page, redirect to home
   if (token && pathname === '/login') {
     return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // For root path, if we have a token, allow access
+  if (isRootPath && token) {
+    return NextResponse.next();
+  }
+
+  // For root path without token, redirect to login
+  if (isRootPath && !token) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('from', pathname);
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

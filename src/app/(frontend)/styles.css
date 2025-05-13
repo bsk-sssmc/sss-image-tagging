@@ -128,7 +128,6 @@ h1 {
 }
 
 .logout-button {
-  margin-top: 2rem;
   padding: 0.75rem 2rem;
   background: #dc3545;
   color: white;
@@ -318,7 +317,37 @@ h1 {
   font-size: 24px;
   font-weight: bold;
   margin-bottom: 1.5rem;
-  text-align: center;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.save-button {
+  padding: 0.5rem 1rem;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-10px);
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.save-button.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.save-button:hover {
+  background: #357abd;
 }
 
 .form-group {
@@ -401,7 +430,16 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  max-width: 200px;
+  max-height: 2.5rem;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.pill-container.expanded {
+  max-height: none;
+  overflow: visible;
 }
 
 .pill {
@@ -412,21 +450,53 @@ h1 {
   color: white;
   border-radius: 16px;
   font-size: 14px;
+  white-space: nowrap;
 }
 
-.pill button {
-  background: none;
-  border: none;
-  color: white;
-  margin-left: 0.5rem;
-  cursor: pointer;
-  padding: 0;
-  font-size: 16px;
-  line-height: 1;
+.pill-container::after {
+  content: '...';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  background: #333;
+  padding: 0 0.5rem;
+  font-size: 14px;
+  color: #666;
 }
 
-.pill button:hover {
-  color: #ff4444;
+.pill-container.expanded::after {
+  display: none;
+}
+
+/* Confidence Stars */
+.confidence-stars {
+  font-size: 0.8em;
+  color: #ffd700;
+  margin-left: 0.25rem;
+}
+
+/* Popout Styles */
+.pill-popout {
+  position: absolute;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 1rem;
+  z-index: 10;
+  max-width: 300px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pill-popout .pill-container {
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.pill-popout .pill-container::after {
+  display: none;
 }
 
 /* Date Input Styles */
@@ -1665,4 +1735,215 @@ h1 {
 
 .person-tag-remove:hover {
   color: #ff4444;
+}
+
+/* Homepage Styles */
+.home-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  min-height: calc(100vh - 4rem);
+}
+
+.welcome-message {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.tags-section {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tags-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #e0e0e0;
+}
+
+.tags-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tags-table th,
+.tags-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #404040;
+  white-space: nowrap;
+}
+
+.tags-table th {
+  background: #404040;
+  font-weight: 600;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.tags-table tr:last-child td {
+  border-bottom: none;
+}
+
+.tags-table tr:hover {
+  background: #404040;
+}
+
+.no-tags {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+  font-size: 1.125rem;
+}
+
+.loading-spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+/* Unified Table Styles */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tags-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tags-table th,
+.tags-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #404040;
+  white-space: nowrap;
+}
+
+.tags-table th {
+  background: #404040;
+  font-weight: 600;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.tags-table tr:last-child td {
+  border-bottom: none;
+}
+
+.tags-table tr:hover {
+  background: #404040;
+}
+
+/* Pill Styles */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 200px;
+  max-height: 2.5rem;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.pill-container.expanded {
+  max-height: none;
+  overflow: visible;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background: #4a90e2;
+  color: white;
+  border-radius: 16px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.pill-container::after {
+  content: '...';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  background: #333;
+  padding: 0 0.5rem;
+  font-size: 14px;
+  color: #666;
+}
+
+.pill-container.expanded::after {
+  display: none;
+}
+
+/* Confidence Stars */
+.confidence-stars {
+  font-size: 0.8em;
+  color: #ffd700;
+  margin-left: 0.25rem;
+}
+
+/* Popout Styles */
+.pill-popout {
+  position: absolute;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 1rem;
+  z-index: 10;
+  max-width: 300px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pill-popout .pill-container {
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.pill-popout .pill-container::after {
+  display: none;
+}
+
+/* Image Link Styles */
+.image-link {
+  color: #4a90e2;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-link:hover {
+  color: #357abd;
+  text-decoration: underline;
 }

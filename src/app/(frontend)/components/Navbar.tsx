@@ -1,40 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, setUser } = useAuth();
+  const { user, logout } = useAuth();
+  const isLoginPage = pathname === '/login';
 
-  const handleLogout = async () => {
-    try {
-      const res = await fetch('/api/users/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        throw new Error('Logout failed');
-      }
-
-      // Clear auth state and localStorage
-      setUser(null);
-      localStorage.removeItem('auth-state');
-      
-      // Dispatch storage event to notify other tabs
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'auth-state',
-        newValue: null
-      }));
-
-      router.push('/login');
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
+  // Don't render the navbar on the login page
+  if (isLoginPage) {
+    return null;
+  }
 
   return (
     <nav className="navbar">
@@ -62,7 +40,7 @@ const Navbar = () => {
             Gallery
           </Link>
           <button 
-            onClick={handleLogout} 
+            onClick={logout} 
             className="logout-button"
           >
             Logout

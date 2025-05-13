@@ -86,7 +86,7 @@ export default function TagPage() {
     }
   };
 
-  const fetchRandomImage = useCallback(async () => {
+  const fetchRandomImage = useCallback(async (updateUrl: boolean = false) => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/media/random', {
@@ -104,8 +104,10 @@ export default function TagPage() {
       }
       const data = await response.json();
       setCurrentImage(data);
-      // Always update URL with the current image ID
-      router.replace(`/tag?image=${data.id}`, { scroll: false });
+      // Only update URL if explicitly requested (like when clicking refresh)
+      if (updateUrl) {
+        router.replace(`/tag?image=${data.id}`, { scroll: false });
+      }
     } catch (error) {
       console.error('Error fetching image:', error);
     } finally {
@@ -122,7 +124,7 @@ export default function TagPage() {
 
   const handleRefresh = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering image click
-    fetchRandomImage();
+    fetchRandomImage(true); // Always fetch a new random image when refresh is clicked
   };
 
   const handleFormSubmit = async (formData: any) => {
@@ -131,7 +133,7 @@ export default function TagPage() {
     try {
       // Only fetch random image if we're not viewing a specific image
       if (!imageId) {
-        await fetchRandomImage();
+        await fetchRandomImage(false); // Don't update URL after form submission
       }
       
       console.log('Successfully processed tag submission');

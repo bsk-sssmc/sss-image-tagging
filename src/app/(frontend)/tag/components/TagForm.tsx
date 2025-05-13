@@ -35,6 +35,20 @@ interface TagFormProps {
   currentImageId?: string;
 }
 
+interface FormState {
+  selectedPersons: Person[];
+  selectedLocation: Location | null;
+  locationConfidence: string;
+  selectedOccasion: Occasion | null;
+  occasionConfidence: string;
+  dateType: string;
+  dateValue: string;
+  dateConfidence: string;
+  context: string;
+  remarks: string;
+  pins: Pin[];
+}
+
 export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: TagFormProps) {
   // State for form fields
   const [selectedPersons, setSelectedPersons] = useState<Person[]>([]);
@@ -82,6 +96,22 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
   const [isCreatePersonModalOpen, setIsCreatePersonModalOpen] = useState(false);
   const [isCreateLocationModalOpen, setIsCreateLocationModalOpen] = useState(false);
   const [isCreateOccasionModalOpen, setIsCreateOccasionModalOpen] = useState(false);
+
+  // Add new state for tracking form changes
+  const [hasChanges, setHasChanges] = useState(false);
+  const [initialFormState, setInitialFormState] = useState<FormState>({
+    selectedPersons: [],
+    selectedLocation: null,
+    locationConfidence: '3',
+    selectedOccasion: null,
+    occasionConfidence: '3',
+    dateType: '',
+    dateValue: '',
+    dateConfidence: '3',
+    context: '',
+    remarks: '',
+    pins: []
+  });
 
   const router = useRouter();
 
@@ -165,6 +195,55 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Update initial form state when component mounts
+  useEffect(() => {
+    setInitialFormState({
+      selectedPersons,
+      selectedLocation,
+      locationConfidence,
+      selectedOccasion,
+      occasionConfidence,
+      dateType,
+      dateValue,
+      dateConfidence,
+      context,
+      remarks,
+      pins
+    });
+  }, []);
+
+  // Check for changes whenever form fields change
+  useEffect(() => {
+    const currentState = {
+      selectedPersons,
+      selectedLocation,
+      locationConfidence,
+      selectedOccasion,
+      occasionConfidence,
+      dateType,
+      dateValue,
+      dateConfidence,
+      context,
+      remarks,
+      pins
+    };
+
+    const hasFormChanged = JSON.stringify(currentState) !== JSON.stringify(initialFormState);
+    setHasChanges(hasFormChanged);
+  }, [
+    selectedPersons,
+    selectedLocation,
+    locationConfidence,
+    selectedOccasion,
+    occasionConfidence,
+    dateType,
+    dateValue,
+    dateConfidence,
+    context,
+    remarks,
+    pins
+  ]);
 
   const handlePersonSelect = (person: Person | null) => {
     if (person && !selectedPersons.find(p => p.id === person.id)) {
@@ -275,6 +354,22 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
         );
 
       await Promise.all(personTagPromises);
+
+      // Update initial form state after successful submission
+      setInitialFormState({
+        selectedPersons,
+        selectedLocation,
+        locationConfidence,
+        selectedOccasion,
+        occasionConfidence,
+        dateType,
+        dateValue,
+        dateConfidence,
+        context,
+        remarks,
+        pins
+      });
+      setHasChanges(false);
 
       setShowNotification(true);
       setNotificationType('success');
@@ -411,7 +506,18 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
 
   return (
     <form onSubmit={handleSubmit} className="tag-form">
-      <h2>Tag Image</h2>
+      <div style={{ position: 'relative' }}>
+        <h2>
+          Tag Image
+          <button 
+            type="submit" 
+            className={`save-button ${hasChanges ? 'visible' : ''}`}
+            disabled={!hasChanges || isSubmitting}
+          >
+            Save Changes
+          </button>
+        </h2>
+      </div>
       
       {/* Loading Overlay */}
       {isSubmitting && (
@@ -682,14 +788,6 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
           placeholder="Enter any additional remarks..."
         />
       </div>
-
-      <button 
-        type="submit" 
-        className="submit-button"
-        disabled={isFormEmpty()}
-      >
-        Submit Tags
-      </button>
 
       {/* Create Entry Modals */}
       <CreateEntryModal
