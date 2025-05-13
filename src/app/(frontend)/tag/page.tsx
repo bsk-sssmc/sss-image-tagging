@@ -104,16 +104,14 @@ export default function TagPage() {
       }
       const data = await response.json();
       setCurrentImage(data);
-      // Only update URL if we're not already on a specific image
-      if (!imageId) {
-        router.replace(`/tag?image=${data.id}`, { scroll: false });
-      }
+      // Always update URL with the current image ID
+      router.replace(`/tag?image=${data.id}`, { scroll: false });
     } catch (error) {
       console.error('Error fetching image:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [router, imageId]);
+  }, [router]);
 
   const handleImageClick = () => {
     if (currentImage?.url) {
@@ -198,6 +196,7 @@ export default function TagPage() {
           <TagForm 
             onSubmit={handleFormSubmit} 
             currentImageUrl={currentImage?.url}
+            currentImageId={currentImage?.id}
           />
         </div>
       </div>

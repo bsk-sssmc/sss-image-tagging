@@ -32,9 +32,10 @@ interface Pin {
 interface TagFormProps {
   onSubmit: (formData: any) => void;
   currentImageUrl?: string;
+  currentImageId?: string;
 }
 
-export default function TagForm({ onSubmit, currentImageUrl }: TagFormProps) {
+export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: TagFormProps) {
   // State for form fields
   const [selectedPersons, setSelectedPersons] = useState<Person[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -43,7 +44,7 @@ export default function TagForm({ onSubmit, currentImageUrl }: TagFormProps) {
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
   const [occasionConfidence, setOccasionConfidence] = useState('3');
   const [occasionHoverRating, setOccasionHoverRating] = useState(0);
-  const [dateType, setDateType] = useState('full_date');
+  const [dateType, setDateType] = useState('');
   const [dateValue, setDateValue] = useState('');
   const [dateConfidence, setDateConfidence] = useState('3');
   const [dateHoverRating, setDateHoverRating] = useState(0);
@@ -234,7 +235,7 @@ export default function TagForm({ onSubmit, currentImageUrl }: TagFormProps) {
           whenType: dateType || undefined,
           whenValue: dateValue || undefined,
           whenValueConfidence: dateConfidence,
-          mediaId: currentImageUrl,
+          mediaId: currentImageId,
           persons: selectedPersons.map(p => p.id),
           location: selectedLocation?.id,
           locationConfidence,
@@ -262,7 +263,7 @@ export default function TagForm({ onSubmit, currentImageUrl }: TagFormProps) {
             },
             credentials: 'include',
             body: JSON.stringify({
-              mediaId: currentImageUrl,
+              mediaId: currentImageId,
               personId: pin.personId,
               confidence: pin.confidence || '3',
               coordinates: {
