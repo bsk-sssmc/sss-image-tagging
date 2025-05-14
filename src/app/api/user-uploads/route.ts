@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
 import { NextRequest } from 'next/server'
+import { nanoid } from 'nanoid'
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
     const file = formData.get('file') as File
+    const alt = formData.get('alt') as string
 
     if (!file) {
       return Response.json({ error: 'No file provided' }, { status: 400 })
@@ -36,9 +38,8 @@ export async function POST(req: NextRequest) {
     const upload = await payload.create({
       collection: 'user-uploads',
       data: {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
+        mediaId: nanoid(10),
+        alt: alt || '',
         uploadedBy: currentUser.id,
       },
       file: {
@@ -47,7 +48,13 @@ export async function POST(req: NextRequest) {
         name: file.name,
         size: file.size,
       },
-      req, // Pass the request object to let Payload handle the user context
+      req: {
+        ...req,
+        user: {
+          ...currentUser,
+          collection: 'users',
+        },
+      },
     })
 
     return Response.json(upload)

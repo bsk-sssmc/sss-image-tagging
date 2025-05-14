@@ -3,23 +3,23 @@ import { nanoid } from 'nanoid'
 
 export const UserUploads: CollectionConfig = {
   slug: 'user-uploads',
-  admin: {
-    useAsTitle: 'fileName',
-  },
   access: {
     read: () => true,
-    create: () => true,
-    update: () => false, // Users can't update their uploads
-    delete: () => false, // Users can't delete their uploads
   },
   upload: {
     disableLocalStorage: true,
-    staticDir: 'user-uploads',
+    staticDir: 'sss-image-tagging-user-uploads',
     imageSizes: [
       {
         name: 'thumbnail',
         width: 400,
         height: 300,
+        position: 'centre',
+      },
+      {
+        name: 'card',
+        width: 768,
+        height: 1024,
         position: 'centre',
       },
     ],
@@ -32,27 +32,22 @@ export const UserUploads: CollectionConfig = {
   },
   fields: [
     {
-      name: 'fileName',
+      name: 'mediaId',
       type: 'text',
       required: true,
+      unique: true,
       admin: {
         readOnly: true,
       },
-    },
-    {
-      name: 'fileSize',
-      type: 'number',
-      required: true,
-      admin: {
-        readOnly: true,
-      },
-    },
-    {
-      name: 'fileType',
-      type: 'text',
-      required: true,
-      admin: {
-        readOnly: true,
+      hooks: {
+        beforeChange: [
+          ({ value, operation }) => {
+            if (operation === 'create' && !value) {
+              return nanoid(10)
+            }
+            return value
+          },
+        ],
       },
     },
     {
@@ -64,7 +59,20 @@ export const UserUploads: CollectionConfig = {
         readOnly: true,
         position: 'sidebar',
       },
+      hooks: {
+        beforeChange: [
+          ({ value, operation, req }) => {
+            if (operation === 'create') {
+              return req.user?.id || null
+            }
+            return value
+          },
+        ],
+      },
+    },
+    {
+      name: 'alt',
+      type: 'text',
     },
   ],
-  timestamps: true, // This will automatically add createdAt and updatedAt fields
 } 

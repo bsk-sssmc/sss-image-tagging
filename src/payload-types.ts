@@ -347,10 +347,9 @@ export interface PersonTag {
  */
 export interface UserUpload {
   id: string;
-  fileName: string;
-  fileSize: number;
-  fileType: string;
+  mediaId: string;
   uploadedBy: string | User;
+  alt?: string | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -365,6 +364,14 @@ export interface UserUpload {
   focalY?: number | null;
   sizes?: {
     thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
       url?: string | null;
       width?: number | null;
       height?: number | null;
@@ -629,10 +636,9 @@ export interface PersonTagsSelect<T extends boolean = true> {
  * via the `definition` "user-uploads_select".
  */
 export interface UserUploadsSelect<T extends boolean = true> {
-  fileName?: T;
-  fileSize?: T;
-  fileType?: T;
+  mediaId?: T;
   uploadedBy?: T;
+  alt?: T;
   prefix?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -649,6 +655,16 @@ export interface UserUploadsSelect<T extends boolean = true> {
     | T
     | {
         thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
           | T
           | {
               url?: T;
