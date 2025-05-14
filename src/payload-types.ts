@@ -76,6 +76,7 @@ export interface Config {
     albums: Album;
     comments: Comment;
     'person-tags': PersonTag;
+    'user-uploads': UserUpload;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -91,6 +92,7 @@ export interface Config {
     albums: AlbumsSelect<false> | AlbumsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
     'person-tags': PersonTagsSelect<false> | PersonTagsSelect<true>;
+    'user-uploads': UserUploadsSelect<false> | UserUploadsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -341,6 +343,39 @@ export interface PersonTag {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-uploads".
+ */
+export interface UserUpload {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  uploadedBy: string | User;
+  prefix?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -381,6 +416,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'person-tags';
         value: string | PersonTag;
+      } | null)
+    | ({
+        relationTo: 'user-uploads';
+        value: string | UserUpload;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -584,6 +623,42 @@ export interface PersonTagsSelect<T extends boolean = true> {
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-uploads_select".
+ */
+export interface UserUploadsSelect<T extends boolean = true> {
+  fileName?: T;
+  fileSize?: T;
+  fileType?: T;
+  uploadedBy?: T;
+  prefix?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // List of paths that require authentication
-const protectedPaths = ['/tag', '/gallery'];
+const protectedPaths = ['/tag', '/gallery', '/uploads'];
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token') || request.cookies.get('payload-token');
