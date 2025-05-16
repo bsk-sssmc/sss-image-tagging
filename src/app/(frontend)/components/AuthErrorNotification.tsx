@@ -1,21 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AUTH_ERROR_EVENT } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function AuthErrorNotification() {
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const handleAuthError = (event: CustomEvent) => {
-      setError(event.detail.message);
-      // Auto-hide after 5 seconds
-      setTimeout(() => setError(null), 5000);
+    // Listen for 401 responses
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      
+      if (response.status === 401) {
+        setError('Your session has expired. Please log in again.');
+        // Auto-hide after 5 seconds
+        setTimeout(() => setError(null), 5000);
+      }
+      
+      return response;
     };
 
-    window.addEventListener(AUTH_ERROR_EVENT, handleAuthError as EventListener);
     return () => {
-      window.removeEventListener(AUTH_ERROR_EVENT, handleAuthError as EventListener);
+      window.fetch = originalFetch;
     };
   }, []);
 
@@ -26,7 +34,7 @@ export default function AuthErrorNotification() {
       <div className="auth-error-content">
         <p>{error}</p>
         <button 
-          onClick={() => window.location.href = '/login'}
+          onClick={() => router.push('/login')}
           className="auth-error-button"
         >
           Login Again

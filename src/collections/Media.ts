@@ -5,9 +5,14 @@ export const Media: CollectionConfig = {
   slug: 'media',
   access: {
     read: () => true,
+    create: () => true,
+    update: () => true,
+    delete: () => true,
   },
   upload: {
     disableLocalStorage: true,
+    adminThumbnail: 'thumbnail',
+    mimeTypes: ['image/*'],
     imageSizes: [
       {
         name: 'thumbnail',
@@ -50,28 +55,13 @@ export const Media: CollectionConfig = {
       },
     },
     {
-      name: 'uploadedBy',
-      type: 'relationship',
-      relationTo: 'users',
-      required: true,
-      admin: {
-        readOnly: true,
-        position: 'sidebar',
-      },
-      hooks: {
-        beforeChange: [
-          ({ value, operation, req }) => {
-            if (operation === 'create') {
-              return req.user?.id || null
-            }
-            return value
-          },
-        ],
-      },
-    },
-    {
       name: 'alt',
       type: 'text',
     },
   ],
+  admin: {
+    useAsTitle: 'filename',
+    defaultColumns: ['filename', 'alt', 'createdAt'],
+    group: 'Media',
+  },
 }

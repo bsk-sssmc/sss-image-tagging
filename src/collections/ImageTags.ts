@@ -70,12 +70,82 @@ const ImageTags: CollectionConfig = {
       description: 'The picture this tag belongs to',
     },
     {
-      name: 'persons',
-      type: 'relationship',
-      relationTo: 'persons',
-      hasMany: true,
-      label: 'Persons',
-      description: 'People present in the picture',
+      name: 'personTags',
+      type: 'array',
+      label: 'Person Tags',
+      description: 'Detailed information about people in the picture',
+      fields: [
+        {
+          name: 'personId',
+          type: 'relationship',
+          relationTo: 'persons',
+          required: true,
+          label: 'Person',
+          description: 'The person being tagged',
+        },
+        {
+          name: 'confidence',
+          type: 'select',
+          label: 'Confidence Level',
+          description: 'How confident are you about this person tag?',
+          options: [
+            { label: '1 - Not confident', value: '1' },
+            { label: '2 - Somewhat confident', value: '2' },
+            { label: '3 - Moderately confident', value: '3' },
+            { label: '4 - Very confident', value: '4' },
+            { label: '5 - Extremely confident', value: '5' },
+          ],
+          defaultValue: '3',
+        },
+        {
+          name: 'coordinates',
+          type: 'group',
+          fields: [
+            {
+              name: 'x',
+              type: 'number',
+              required: true,
+              min: 0,
+              max: 100,
+              admin: {
+                step: 1,
+              },
+            },
+            {
+              name: 'y',
+              type: 'number',
+              required: true,
+              min: 0,
+              max: 100,
+              admin: {
+                step: 1,
+              },
+            }
+          ],
+        },
+        {
+          name: 'createdBy',
+          type: 'relationship',
+          relationTo: 'users',
+          required: true,
+          admin: {
+            readOnly: true,
+          },
+          hooks: {
+            beforeChange: [
+              ({ value, operation, req }) => {
+                if (operation === 'create') {
+                  if (!req.user) {
+                    throw new Error('User must be authenticated to create a person tag');
+                  }
+                  return req.user.id;
+                }
+                return value;
+              },
+            ],
+          },
+        },
+      ],
     },
     {
       name: 'location',
@@ -130,6 +200,21 @@ const ImageTags: CollectionConfig = {
       type: 'textarea',
       label: 'Remarks',
       description: 'Any additional remarks about the picture',
+    },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      required: true,
+      defaultValue: 'Tagged',
+      options: [
+        { label: 'Not Verified', value: 'Not Verified' },
+        { label: 'Tagged', value: 'Tagged' },
+        { label: 'Verified', value: 'Verified' },
+      ],
+      admin: {
+        description: 'Indicates whether the tag is not verified, just tagged, or has been verified by an admin.'
+      }
     },
     {
       name: 'createdBy',

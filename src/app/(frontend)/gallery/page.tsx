@@ -61,7 +61,7 @@ export default function GalleryPage() {
           {currentAlbum?.images.map((image) => (
             <Link
               key={image.id}
-              href={`/tag?image=${image.id}`}
+              href={`/tag/${image.id}`}
               className="gallery-card"
             >
               <img

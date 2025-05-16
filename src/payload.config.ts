@@ -17,8 +17,6 @@ import { Persons } from './collections/Persons'
 import ImageTags from './collections/ImageTags'
 import { Albums } from './collections/Albums'
 import Comments from './collections/Comments'
-import PersonTags from './collections/PersonTags'
-import { UserUploads } from './collections/UserUploads'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -33,7 +31,7 @@ export default buildConfig({
   auth: {
     jwtOrder: ['Bearer', 'cookie', 'JWT'],
   },
-  collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums, Comments, PersonTags, UserUploads],
+  collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums, Comments],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -53,13 +51,6 @@ export default buildConfig({
             return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${filename}`
           },
         },
-        'user-uploads': {
-          disableLocalStorage: true,
-          generateFileURL: ({ filename }: { filename: string }) => {
-            return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/sss-image-tagging-user-uploads/${filename}`
-          },
-          prefix: 'sss-image-tagging-user-uploads/',
-        },
       },
       bucket: process.env.S3_BUCKET!,
       config: {
@@ -69,6 +60,8 @@ export default buildConfig({
         },
         region: process.env.S3_REGION!,
         endpoint: process.env.S3_ENDPOINT,
+        forcePathStyle: true,
+        maxAttempts: 3,
       },
     }),
   ],

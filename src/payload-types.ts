@@ -75,8 +75,6 @@ export interface Config {
     'image-tags': ImageTag;
     albums: Album;
     comments: Comment;
-    'person-tags': PersonTag;
-    'user-uploads': UserUpload;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -91,8 +89,6 @@ export interface Config {
     'image-tags': ImageTagsSelect<false> | ImageTagsSelect<true>;
     albums: AlbumsSelect<false> | AlbumsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
-    'person-tags': PersonTagsSelect<false> | PersonTagsSelect<true>;
-    'user-uploads': UserUploadsSelect<false> | UserUploadsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -136,6 +132,10 @@ export interface UserAuthOperations {
 export interface User {
   id: string;
   displayName: string;
+  /**
+   * User role determines access level
+   */
+  role: 'user' | 'admin';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -154,7 +154,6 @@ export interface User {
 export interface Media {
   id: string;
   mediaId: string;
-  uploadedBy: string | User;
   alt?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -271,13 +270,28 @@ export interface ImageTag {
   whenValue?: string | null;
   whenValueConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   mediaId: string | Media;
-  persons?: (string | Person)[] | null;
+  personTags?:
+    | {
+        personId: string | Person;
+        confidence?: ('1' | '2' | '3' | '4' | '5') | null;
+        coordinates: {
+          x: number;
+          y: number;
+        };
+        createdBy: string | User;
+        id?: string | null;
+      }[]
+    | null;
   location?: (string | null) | Location;
   locationConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   occasion?: (string | null) | Occasion;
   occasionConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
   context?: string | null;
   remarks?: string | null;
+  /**
+   * Indicates whether the tag is not verified, just tagged, or has been verified by an admin.
+   */
+  status: 'Not Verified' | 'Tagged' | 'Verified';
   createdBy: string | User;
   updatedAt: string;
   createdAt: string;
@@ -326,63 +340,6 @@ export interface Comment {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "person-tags".
- */
-export interface PersonTag {
-  id: string;
-  mediaId: string | Media;
-  personId: string | Person;
-  confidence?: ('1' | '2' | '3' | '4' | '5') | null;
-  coordinates: {
-    x: number;
-    y: number;
-  };
-  createdBy: string | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "user-uploads".
- */
-export interface UserUpload {
-  id: string;
-  mediaId: string;
-  uploadedBy: string | User;
-  alt?: string | null;
-  prefix?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-  sizes?: {
-    thumbnail?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    card?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -419,14 +376,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'comments';
         value: string | Comment;
-      } | null)
-    | ({
-        relationTo: 'person-tags';
-        value: string | PersonTag;
-      } | null)
-    | ({
-        relationTo: 'user-uploads';
-        value: string | UserUpload;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -476,6 +425,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   displayName?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -492,7 +442,6 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   mediaId?: T;
-  uploadedBy?: T;
   alt?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -574,13 +523,27 @@ export interface ImageTagsSelect<T extends boolean = true> {
   whenValue?: T;
   whenValueConfidence?: T;
   mediaId?: T;
-  persons?: T;
+  personTags?:
+    | T
+    | {
+        personId?: T;
+        confidence?: T;
+        coordinates?:
+          | T
+          | {
+              x?: T;
+              y?: T;
+            };
+        createdBy?: T;
+        id?: T;
+      };
   location?: T;
   locationConfidence?: T;
   occasion?: T;
   occasionConfidence?: T;
   context?: T;
   remarks?: T;
+  status?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -612,69 +575,6 @@ export interface CommentsSelect<T extends boolean = true> {
   parentComment?: T;
   depth?: T;
   updatedAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "person-tags_select".
- */
-export interface PersonTagsSelect<T extends boolean = true> {
-  mediaId?: T;
-  personId?: T;
-  confidence?: T;
-  coordinates?:
-    | T
-    | {
-        x?: T;
-        y?: T;
-      };
-  createdBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "user-uploads_select".
- */
-export interface UserUploadsSelect<T extends boolean = true> {
-  mediaId?: T;
-  uploadedBy?: T;
-  alt?: T;
-  prefix?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-  sizes?:
-    | T
-    | {
-        thumbnail?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-        card?:
-          | T
-          | {
-              url?: T;
-              width?: T;
-              height?: T;
-              mimeType?: T;
-              filesize?: T;
-              filename?: T;
-            };
-      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

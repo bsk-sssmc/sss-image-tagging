@@ -17,6 +17,7 @@ export async function POST(req: Request) {
         email,
         password,
         displayName,
+        role: 'user',
       },
     })
 

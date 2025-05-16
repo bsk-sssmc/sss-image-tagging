@@ -11,7 +11,7 @@ export default function AuthForms() {
   const [userId, setUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { setUser, checkAuth } = useAuth()
+  const { setUser } = useAuth()
 
   useEffect(() => {
     // Check if user needs to set display name
@@ -81,10 +81,16 @@ export default function AuthForms() {
         if (!data.user.displayName) {
           setShowDisplayNameForm(true)
         } else {
-          // Update auth context and redirect to the original destination
-          await checkAuth()
-          console.log('Redirecting to:', data.redirectTo || '/')
-          router.push(data.redirectTo || '/')
+          // Update auth context and redirect
+          setUser(data.user)
+          localStorage.setItem('auth-state', JSON.stringify(data.user))
+          localStorage.setItem('auth-timestamp', Date.now().toString())
+          
+          const targetPath = data.redirectTo || '/'
+          if (window.location.pathname !== targetPath) {
+            console.log('Redirecting to:', targetPath)
+            router.push(targetPath)
+          }
         }
       } else {
         throw new Error('User data not found in response')
@@ -167,7 +173,10 @@ export default function AuthForms() {
 
       setShowDisplayNameForm(false)
       // Update auth context and redirect to home page
-      await checkAuth()
+      const userData = await res.json()
+      setUser(userData.user)
+      localStorage.setItem('auth-state', JSON.stringify(userData.user))
+      localStorage.setItem('auth-timestamp', Date.now().toString())
       router.push('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update display name')

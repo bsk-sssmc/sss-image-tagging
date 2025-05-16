@@ -5,6 +5,8 @@ import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
 import NotificationPopup from '../../components/NotificationPopup';
 import CreateEntryModal from './CreateEntryModal';
+import ExistingTags from './ExistingTags';
+import { useAuth } from '../../context/AuthContext';
 
 interface Person {
   id: string;
@@ -22,10 +24,10 @@ interface Occasion {
 }
 
 interface Pin {
-  id: string;
+  id?: string;
+  personId?: string;
   x: number;
   y: number;
-  personId?: string;
   confidence?: string;
 }
 
@@ -48,6 +50,104 @@ interface FormState {
   remarks: string;
   pins: Pin[];
 }
+
+interface ExistingTag {
+  id: string;
+  persons: Person[];
+  location?: Location;
+  locationConfidence?: string;
+  occasion?: Occasion;
+  occasionConfidence?: string;
+  whenType?: string;
+  whenValue?: string;
+  whenValueConfidence?: string;
+  context?: string;
+  createdBy: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  createdAt: string;
+}
+
+// Add a cache for API responses
+const apiCache = {
+  persons: null,
+  locations: null,
+  occasions: null,
+  imageTags: new Map(),
+};
+
+const styles = `
+.existing-tags-preview {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.existing-tag-preview {
+  margin-bottom: 0.5rem;
+}
+
+.tag-label {
+  font-size: 0.875rem;
+  color: #666;
+  margin-right: 0.5rem;
+}
+
+.tag-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.tag-value {
+  background-color: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.context-preview {
+  cursor: pointer;
+  color: #666;
+  font-style: italic;
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.context-preview:hover {
+  background-color: #dee2e6;
+}
+
+.latest-tag-indicator {
+  font-size: 0.75rem;
+  color: #666;
+  background-color: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.input-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.input-header label {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+`
 
 export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: TagFormProps) {
   // State for form fields
@@ -113,32 +213,55 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
     pins: []
   });
 
-  const router = useRouter();
+  // Add new state for latest tag info
+  const [latestTag, setLatestTag] = useState<ExistingTag | null>(null);
 
-  // Fetch data from PayloadCMS API
+  const router = useRouter();
+  const { user } = useAuth();
+  const [hasOtherUserTags, setHasOtherUserTags] = useState(false);
+  const [expandedContext, setExpandedContext] = useState<string | null>(null);
+  const [myTaggedPersons, setMyTaggedPersons] = useState<Person[]>([]);
+  const [otherUserPersons, setOtherUserPersons] = useState<Person[]>([]);
+
+  // Fetch data from PayloadCMS API with caching
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch persons
-        setIsLoadingPersons(true);
-        const personsResponse = await fetch('/api/persons?limit=100');
-        const personsData = await personsResponse.json();
-        setPersons(personsData.docs);
-        setIsLoadingPersons(false);
+        // Fetch persons if not cached
+        if (!apiCache.persons) {
+          setIsLoadingPersons(true);
+          const personsResponse = await fetch('/api/persons?limit=100');
+          const personsData = await personsResponse.json();
+          apiCache.persons = personsData.docs;
+          setPersons(personsData.docs);
+          setIsLoadingPersons(false);
+        } else {
+          setPersons(apiCache.persons);
+        }
 
-        // Fetch locations
-        setIsLoadingLocations(true);
-        const locationsResponse = await fetch('/api/locations?limit=100');
-        const locationsData = await locationsResponse.json();
-        setLocations(locationsData.docs);
-        setIsLoadingLocations(false);
+        // Fetch locations if not cached
+        if (!apiCache.locations) {
+          setIsLoadingLocations(true);
+          const locationsResponse = await fetch('/api/locations?limit=100');
+          const locationsData = await locationsResponse.json();
+          apiCache.locations = locationsData.docs;
+          setLocations(locationsData.docs);
+          setIsLoadingLocations(false);
+        } else {
+          setLocations(apiCache.locations);
+        }
 
-        // Fetch occasions
-        setIsLoadingOccasions(true);
-        const occasionsResponse = await fetch('/api/occasions?limit=100');
-        const occasionsData = await occasionsResponse.json();
-        setOccasions(occasionsData.docs);
-        setIsLoadingOccasions(false);
+        // Fetch occasions if not cached
+        if (!apiCache.occasions) {
+          setIsLoadingOccasions(true);
+          const occasionsResponse = await fetch('/api/occasions?limit=100');
+          const occasionsData = await occasionsResponse.json();
+          apiCache.occasions = occasionsData.docs;
+          setOccasions(occasionsData.docs);
+          setIsLoadingOccasions(false);
+        } else {
+          setOccasions(apiCache.occasions);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         setIsLoadingPersons(false);
@@ -149,6 +272,59 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
 
     fetchData();
   }, []);
+
+  // Fetch all tagged persons for this image and split into mine/others with caching
+  useEffect(() => {
+    const fetchAllTaggedPersons = async () => {
+      if (!currentImageId || !user) return;
+      
+      // Check cache first
+      if (apiCache.imageTags.has(currentImageId)) {
+        const cachedData = apiCache.imageTags.get(currentImageId);
+        const mine = cachedData.docs
+          .filter((tag: any) => tag.createdBy?.id === user.id)
+          .flatMap((tag: any) => tag.persons || []);
+        const others = cachedData.docs
+          .filter((tag: any) => tag.createdBy?.id !== user.id)
+          .flatMap((tag: any) => tag.persons || []);
+        const uniqueMine = Array.from(new Map(mine.map((p: any) => [p.id, p])).values()) as Person[];
+        const uniqueOthers = Array.from(new Map(others.map((p: any) => [p.id, p])).values()) as Person[];
+        setMyTaggedPersons(uniqueMine);
+        setOtherUserPersons(uniqueOthers);
+        
+        // Update selectedPersons with my tagged persons
+        setSelectedPersons(uniqueMine);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/image-tags?where[mediaId][equals]=${currentImageId}&populate[persons]=true`);
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        // Cache the response
+        apiCache.imageTags.set(currentImageId, data);
+        
+        // Process the data
+        const mine = data.docs
+          .filter((tag: any) => tag.createdBy?.id === user.id)
+          .flatMap((tag: any) => tag.persons || []);
+        const others = data.docs
+          .filter((tag: any) => tag.createdBy?.id !== user.id)
+          .flatMap((tag: any) => tag.persons || []);
+        const uniqueMine = Array.from(new Map(mine.map((p: any) => [p.id, p])).values()) as Person[];
+        const uniqueOthers = Array.from(new Map(others.map((p: any) => [p.id, p])).values()) as Person[];
+        setMyTaggedPersons(uniqueMine);
+        setOtherUserPersons(uniqueOthers);
+        
+        // Update selectedPersons with my tagged persons
+        setSelectedPersons(uniqueMine);
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchAllTaggedPersons();
+  }, [currentImageId, user]);
 
   // Add event listener for pin updates
   useEffect(() => {
@@ -165,9 +341,13 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       const uniquePersonIds = [...new Set(personIds)];
       
       // Update selectedPersons with the new list
-      setSelectedPersons(persons.filter(person => 
+      const newSelectedPersons = persons.filter(person => 
         uniquePersonIds.includes(person.id)
-      ));
+      );
+      setSelectedPersons(newSelectedPersons);
+      
+      // Update hasChanges state
+      setHasChanges(true);
     };
 
     window.addEventListener('pinUpdate', handlePinUpdate as EventListener);
@@ -198,19 +378,20 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
 
   // Update initial form state when component mounts
   useEffect(() => {
-    setInitialFormState({
-      selectedPersons,
-      selectedLocation,
-      locationConfidence,
-      selectedOccasion,
-      occasionConfidence,
-      dateType,
-      dateValue,
-      dateConfidence,
-      context,
-      remarks,
-      pins
-    });
+    const initialState = {
+      selectedPersons: [],
+      selectedLocation: null,
+      locationConfidence: '3',
+      selectedOccasion: null,
+      occasionConfidence: '3',
+      dateType: '',
+      dateValue: '',
+      dateConfidence: '3',
+      context: '',
+      remarks: '',
+      pins: []
+    };
+    setInitialFormState(initialState);
   }, []);
 
   // Check for changes whenever form fields change
@@ -244,6 +425,80 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
     remarks,
     pins
   ]);
+
+  // 1. Sync selectedPersons with pins whenever pins or persons change
+  useEffect(() => {
+    if (pins.length > 0) {
+      // Get unique personIds from pins
+      const personIds = pins.filter(pin => pin.personId).map(pin => pin.personId);
+      const uniquePersonIds = [...new Set(personIds)];
+      const newSelectedPersons = persons.filter(person => uniquePersonIds.includes(person.id));
+      setSelectedPersons(newSelectedPersons);
+    }
+  }, [pins, persons]);
+
+  // 2. On mount and when tags are fetched, if there are no pins, set selectedPersons to user's tagged persons
+  useEffect(() => {
+    if (pins.length === 0 && myTaggedPersons.length > 0) {
+      setSelectedPersons(myTaggedPersons);
+    }
+  }, [pins, myTaggedPersons]);
+
+  // 3. After successful save, update selectedPersons to match the latest tags
+  useEffect(() => {
+    if (!isSubmitting && showNotification && notificationType === 'success') {
+      setSelectedPersons(myTaggedPersons);
+    }
+  }, [isSubmitting, showNotification, notificationType, myTaggedPersons]);
+
+  // Fetch latest tag info when component mounts or imageId changes
+  useEffect(() => {
+    const fetchLatestTag = async () => {
+      if (!currentImageId) return;
+
+      try {
+        const response = await fetch(`/api/image-tags?where[mediaId][equals]=${currentImageId}&populate[location]=true&populate[occasion]=true&populate[createdBy]=true&sort=-createdAt&limit=1`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.docs && data.docs.length > 0) {
+          const latest = data.docs[0];
+          setLatestTag(latest);
+          
+          // Set form fields with latest tag info
+          if (latest.location) {
+            setSelectedLocation(latest.location);
+            setLocationInput(latest.location.name);
+            setLocationConfidence(latest.locationConfidence || '3');
+          }
+          
+          if (latest.occasion) {
+            setSelectedOccasion(latest.occasion);
+            setOccasionInput(latest.occasion.name);
+            setOccasionConfidence(latest.occasionConfidence || '3');
+          }
+          
+          if (latest.whenType && latest.whenValue) {
+            setDateType(latest.whenType);
+            setDateValue(latest.whenValue);
+            setDateConfidence(latest.whenValueConfidence || '3');
+          }
+          
+          if (latest.context) {
+            setContext(latest.context);
+          }
+          
+          if (latest.remarks) {
+            setRemarks(latest.remarks);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching latest tag:', error);
+      }
+    };
+
+    fetchLatestTag();
+  }, [currentImageId]);
 
   const handlePersonSelect = (person: Person | null) => {
     if (person && !selectedPersons.find(p => p.id === person.id)) {
@@ -303,8 +558,8 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
     setError(null);
 
     try {
-      // First create the image tag
-      const imageTagResponse = await fetch('/api/image-tags', {
+      // Create a single image tag with person tags
+      const response = await fetch('/api/image-tags', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -315,7 +570,16 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
           whenValue: dateValue || undefined,
           whenValueConfidence: dateConfidence,
           mediaId: currentImageId,
-          persons: selectedPersons.map(p => p.id),
+          personTags: pins
+            .filter(pin => pin.personId)
+            .map(pin => ({
+              personId: pin.personId,
+              confidence: pin.confidence || '3',
+              coordinates: {
+                x: pin.x,
+                y: pin.y,
+              },
+            })),
           location: selectedLocation?.id,
           locationConfidence,
           occasion: selectedOccasion?.id,
@@ -325,35 +589,9 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
         }),
       });
 
-      if (!imageTagResponse.ok) {
+      if (!response.ok) {
         throw new Error('Failed to create image tag');
       }
-
-      const imageTagData = await imageTagResponse.json();
-
-      // Then create person tags for each pin
-      const personTagPromises = pins
-        .filter(pin => pin.personId)
-        .map(pin => 
-          fetch('/api/person-tags', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              mediaId: currentImageId,
-              personId: pin.personId,
-              confidence: pin.confidence || '3',
-              coordinates: {
-                x: pin.x,
-                y: pin.y,
-              },
-            }),
-          })
-        );
-
-      await Promise.all(personTagPromises);
 
       // Update initial form state after successful submission
       setInitialFormState({
@@ -504,6 +742,18 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
     }
   };
 
+  const handleTagRemove = (tagId: string) => {
+    // Refresh the form state after tag removal
+    setSelectedPersons([]);
+    setSelectedLocation(null);
+    setSelectedOccasion(null);
+    setDateType('');
+    setDateValue('');
+    setContext('');
+    setRemarks('');
+    setPins([]);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="tag-form">
       <div style={{ position: 'relative' }}>
@@ -542,85 +792,64 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       {/* Persons Input */}
       <div className="form-group">
         <label>Who are in the image?</label>
-        <div className="input-group">
-          <button
-            type="button"
-            className="add-people-button"
-            onClick={() => {
-              if (currentImageUrl) {
-                window.dispatchEvent(new CustomEvent('openImageModal', { 
-                  detail: { 
-                    imageUrl: currentImageUrl,
-                    pins: pins
-                  } 
-                }));
-              }
-            }}
-          >
-            Add People
-          </button>
+        <div className="person-tag-instructions">
+          Click on the image to tag the people in it.
         </div>
-        <div className="person-tag-rows">
-          {selectedPersons.map(person => {
-            const pin = pins.find(p => p.personId === person.id);
-            return (
-              <div key={person.id} className="person-tag-row">
-                <span className="person-tag-name">{person.name}</span>
-                <div className="person-tag-rating">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <span
-                      key={rating}
-                      className={`star ${pin?.confidence === rating.toString() ? 'filled' : ''}`}
-                      onClick={() => {
-                        const updatedPins = pins.map(p => 
-                          p.personId === person.id 
-                            ? { ...p, confidence: rating.toString() }
-                            : p
-                        );
-                        setPins(updatedPins);
-                        window.dispatchEvent(new CustomEvent('pinUpdate', { 
-                          detail: { pins: updatedPins }
-                        }));
-                      }}
-                    >
-                      ★
-                    </span>
-                  ))}
-                </div>
+        {(myTaggedPersons.length > 0 || otherUserPersons.length > 0) && (
+          <div className="tagged-people-list">
+            {myTaggedPersons.map(person => (
+              <div key={person.id} className="tagged-person">
+                {person.name}
                 <button
                   type="button"
-                  className="person-tag-remove"
+                  className="tagged-person-remove"
                   onClick={() => handlePersonRemove(person.id)}
-                  aria-label={`Remove ${person.name}`}
                 >
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  ×
                 </button>
               </div>
-            );
-          })}
-        </div>
+            ))}
+            {otherUserPersons.map(person => (
+              <div key={person.id} className="tagged-person tagged-person-other">
+                {person.name}
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Debug: Show all tagged people as text */}
+        {(myTaggedPersons.length > 0 || otherUserPersons.length > 0) && (
+          <div style={{ marginTop: '0.5rem', color: '#aaa', fontSize: '0.85rem' }}>
+            Tagged people (debug):
+            {[...myTaggedPersons, ...otherUserPersons].map(p => p.name).join(', ')}
+          </div>
+        )}
       </div>
 
       {/* Location Input */}
       <div className="form-group">
         <div className="input-header">
-          <label>Where was this image taken?</label>
-          {selectedLocation && (
-            <div className="star-rating">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={`star ${star <= (locationHoverRating || parseInt(locationConfidence)) ? 'filled' : ''}`}
-                  onMouseEnter={() => setLocationHoverRating(star)}
-                  onMouseLeave={() => setLocationHoverRating(0)}
-                  onClick={() => setLocationConfidence(star.toString())}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
+          <label>
+            Where was this image taken?
+            {selectedLocation && (
+              <div className="star-rating">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`star ${star <= (locationHoverRating || parseInt(locationConfidence)) ? 'filled' : ''}`}
+                    onMouseEnter={() => setLocationHoverRating(star)}
+                    onMouseLeave={() => setLocationHoverRating(0)}
+                    onClick={() => setLocationConfidence(star.toString())}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+            )}
+          </label>
+          {latestTag?.location && (
+            <span className="latest-tag-indicator">
+              Latest tag by {latestTag.createdBy.displayName}
+            </span>
           )}
         </div>
         <div className="dropdown-container" ref={locationDropdownRef}>
@@ -633,28 +862,53 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
               onChange={handleLocationInputChange}
               onFocus={() => setIsLocationsDropdownOpen(true)}
             />
+            {selectedLocation && (
+              <button
+                type="button"
+                className="clear-button"
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setLocationInput('');
+                  setLocationConfidence('3');
+                }}
+                aria-label="Clear location"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             <button
               type="button"
               className="add-button"
               onClick={() => setIsCreateLocationModalOpen(true)}
-              aria-label="Add new location"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
           </div>
           {isLocationsDropdownOpen && (
             <div className="dropdown-list">
-              {filteredLocations.map(location => (
-                <div
-                  key={location.id}
-                  className="dropdown-item"
-                  onClick={() => handleLocationSelect(location)}
-                >
-                  {location.name}
+              {isLoadingLocations ? (
+                <div className="dropdown-loading">
+                  <div className="loading-spinner"></div>
                 </div>
-              ))}
+              ) : (
+                locations
+                  .filter(location => 
+                    location.name.toLowerCase().includes(locationInput.toLowerCase())
+                  )
+                  .map(location => (
+                    <div
+                      key={location.id}
+                      className="dropdown-item"
+                      onClick={() => handleLocationSelect(location)}
+                    >
+                      <span className="item-name">{location.name}</span>
+                    </div>
+                  ))
+              )}
             </div>
           )}
         </div>
@@ -663,21 +917,28 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       {/* Occasion Input */}
       <div className="form-group">
         <div className="input-header">
-          <label>Any occasion / festival around the image?</label>
-          {selectedOccasion && (
-            <div className="star-rating">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={`star ${star <= (occasionHoverRating || parseInt(occasionConfidence)) ? 'filled' : ''}`}
-                  onMouseEnter={() => setOccasionHoverRating(star)}
-                  onMouseLeave={() => setOccasionHoverRating(0)}
-                  onClick={() => setOccasionConfidence(star.toString())}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
+          <label>
+            Any occasion / festival around the image?
+            {selectedOccasion && (
+              <div className="star-rating">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`star ${star <= (occasionHoverRating || parseInt(occasionConfidence)) ? 'filled' : ''}`}
+                    onMouseEnter={() => setOccasionHoverRating(star)}
+                    onMouseLeave={() => setOccasionHoverRating(0)}
+                    onClick={() => setOccasionConfidence(star.toString())}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+            )}
+          </label>
+          {latestTag?.occasion && (
+            <span className="latest-tag-indicator">
+              Latest tag by {latestTag.createdBy.displayName}
+            </span>
           )}
         </div>
         <div className="dropdown-container" ref={occasionDropdownRef}>
@@ -690,28 +951,53 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
               onChange={handleOccasionInputChange}
               onFocus={() => setIsOccasionsDropdownOpen(true)}
             />
+            {selectedOccasion && (
+              <button
+                type="button"
+                className="clear-button"
+                onClick={() => {
+                  setSelectedOccasion(null);
+                  setOccasionInput('');
+                  setOccasionConfidence('3');
+                }}
+                aria-label="Clear occasion"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             <button
               type="button"
               className="add-button"
               onClick={() => setIsCreateOccasionModalOpen(true)}
-              aria-label="Add new occasion"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
           </div>
           {isOccasionsDropdownOpen && (
             <div className="dropdown-list">
-              {filteredOccasions.map(occasion => (
-                <div
-                  key={occasion.id}
-                  className="dropdown-item"
-                  onClick={() => handleOccasionSelect(occasion)}
-                >
-                  {occasion.name}
+              {isLoadingOccasions ? (
+                <div className="dropdown-loading">
+                  <div className="loading-spinner"></div>
                 </div>
-              ))}
+              ) : (
+                occasions
+                  .filter(occasion => 
+                    occasion.name.toLowerCase().includes(occasionInput.toLowerCase())
+                  )
+                  .map(occasion => (
+                    <div
+                      key={occasion.id}
+                      className="dropdown-item"
+                      onClick={() => handleOccasionSelect(occasion)}
+                    >
+                      <span className="item-name">{occasion.name}</span>
+                    </div>
+                  ))
+              )}
             </div>
           )}
         </div>
@@ -720,95 +1006,277 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       {/* Date Input */}
       <div className="form-group">
         <div className="input-header">
-          <label>When was this image taken?</label>
-          {dateValue && (
-            <div className="star-rating">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={`star ${star <= (dateHoverRating || parseInt(dateConfidence)) ? 'filled' : ''}`}
-                  onMouseEnter={() => setDateHoverRating(star)}
-                  onMouseLeave={() => setDateHoverRating(0)}
-                  onClick={() => setDateConfidence(star.toString())}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
+          <label>
+            When was this image taken?
+            {dateValue && (
+              <div className="star-rating">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`star ${star <= (dateHoverRating || parseInt(dateConfidence)) ? 'filled' : ''}`}
+                    onMouseEnter={() => setDateHoverRating(star)}
+                    onMouseLeave={() => setDateHoverRating(0)}
+                    onClick={() => setDateConfidence(star.toString())}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+            )}
+          </label>
+          {latestTag?.whenValue && (
+            <span className="latest-tag-indicator">
+              Latest tag by {latestTag.createdBy.displayName}
+            </span>
           )}
         </div>
-        <div className="date-type-selector">
+        <div className="date-inputs">
           <select
             value={dateType}
-            onChange={(e) => setDateType(e.target.value)}
+            onChange={(e) => {
+              setDateType(e.target.value);
+              setDateValue(''); // Reset value when type changes
+              setDateConfidence('3'); // Reset confidence when type changes
+            }}
             className="date-type-select"
           >
             <option value="">Select an option</option>
             <option value="full_date">Full Date</option>
-            <option value="decades">Decade</option>
+            <option value="decades">Decades</option>
             <option value="year">Year</option>
             <option value="month_year">Month-Year</option>
           </select>
+          
+          {dateType === 'full_date' && (
+            <div className="date-value-group">
+              <input
+                type="date"
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+                className="date-input"
+                min="1926-11-23"
+                max="2011-04-24"
+              />
+              {dateValue && (
+                <button
+                  type="button"
+                  className="clear-button"
+                  onClick={() => setDateValue('')}
+                  aria-label="Clear date"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {dateType === 'decades' && (
+            <div className="date-value-group">
+              <select
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+                className="date-value-select"
+              >
+                <option value="">Select decade</option>
+                {['1920s', '1930s', '1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s'].map(decade => (
+                  <option key={decade} value={decade}>{decade}</option>
+                ))}
+              </select>
+              {dateValue && (
+                <button
+                  type="button"
+                  className="clear-button"
+                  onClick={() => setDateValue('')}
+                  aria-label="Clear decade"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {dateType === 'year' && (
+            <div className="date-value-group">
+              <select
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+                className="date-value-select"
+              >
+                <option value="">Select year</option>
+                {Array.from({ length: 86 }, (_, i) => 1926 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              {dateValue && (
+                <button
+                  type="button"
+                  className="clear-button"
+                  onClick={() => setDateValue('')}
+                  aria-label="Clear year"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {dateType === 'month_year' && (
+            <div className="month-year-inputs">
+              <div className="date-value-group">
+                <select
+                  value={dateValue.split('-')[0] || ''}
+                  onChange={(e) => {
+                    const month = e.target.value;
+                    const year = dateValue.split('-')[1] || '';
+                    setDateValue(year ? `${month}-${year}` : month);
+                  }}
+                  className="month-select"
+                >
+                  <option value="">Select month</option>
+                  {[
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                  ].map((month, index) => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+                {dateValue.split('-')[0] && (
+                  <button
+                    type="button"
+                    className="clear-button"
+                    onClick={() => {
+                      const year = dateValue.split('-')[1] || '';
+                      setDateValue(year);
+                    }}
+                    aria-label="Clear month"
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <div className="date-value-group">
+                <select
+                  value={dateValue.split('-')[1] || ''}
+                  onChange={(e) => {
+                    const month = dateValue.split('-')[0] || '';
+                    const year = e.target.value;
+                    setDateValue(month ? `${month}-${year}` : year);
+                  }}
+                  className="year-select"
+                >
+                  <option value="">Select year</option>
+                  {Array.from({ length: 86 }, (_, i) => 1926 + i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+                {dateValue.split('-')[1] && (
+                  <button
+                    type="button"
+                    className="clear-button"
+                    onClick={() => {
+                      const month = dateValue.split('-')[0] || '';
+                      setDateValue(month);
+                    }}
+                    aria-label="Clear year"
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        {dateType && (
-          <input
-            type="text"
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-            placeholder={
-              dateType === 'full_date'
-                ? 'YYYY-MM-DD'
-                : dateType === 'decades'
-                ? 'e.g., 1980s'
-                : dateType === 'year'
-                ? 'YYYY'
-                : 'YYYY-MM'
-            }
-            className="date-input"
-          />
-        )}
       </div>
 
       {/* Context Input */}
       <div className="form-group">
         <label>What is the picture about? (Context)</label>
-        <textarea
-          value={context}
-          onChange={(e) => setContext(e.target.value)}
-          placeholder="Enter the context of the image..."
-        />
+        <div className="input-group">
+          <textarea
+            value={context}
+            onChange={(e) => setContext(e.target.value)}
+            placeholder="Describe the context of the image..."
+            rows={4}
+          />
+          {context && (
+            <button
+              type="button"
+              className="clear-button"
+              onClick={() => setContext('')}
+              aria-label="Clear context"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Remarks Input */}
       <div className="form-group">
-        <label>Any additional remarks</label>
-        <textarea
-          value={remarks}
-          onChange={(e) => setRemarks(e.target.value)}
-          placeholder="Enter any additional remarks..."
-        />
+        <label>Additional Remarks</label>
+        <div className="input-group">
+          <textarea
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            placeholder="Add any additional remarks or notes..."
+            rows={4}
+          />
+          {remarks && (
+            <button
+              type="button"
+              className="clear-button"
+              onClick={() => setRemarks('')}
+              aria-label="Clear remarks"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Create Entry Modals */}
       <CreateEntryModal
         isOpen={isCreatePersonModalOpen}
         onClose={() => setIsCreatePersonModalOpen(false)}
-        type="person"
         onSubmit={handleCreatePerson}
+        title="Create New Person"
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true }
+        ]}
       />
 
       <CreateEntryModal
         isOpen={isCreateLocationModalOpen}
         onClose={() => setIsCreateLocationModalOpen(false)}
-        type="location"
         onSubmit={handleCreateLocation}
+        title="Create New Location"
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true }
+        ]}
       />
 
       <CreateEntryModal
         isOpen={isCreateOccasionModalOpen}
         onClose={() => setIsCreateOccasionModalOpen(false)}
-        type="occasion"
         onSubmit={handleCreateOccasion}
+        title="Create New Occasion"
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true }
+        ]}
       />
     </form>
   );

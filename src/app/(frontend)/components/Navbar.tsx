@@ -3,29 +3,35 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const Navbar = () => {
   const pathname = usePathname();
-  const { user, logout, isChecking } = useAuth();
+  const { user, logout } = useAuth();
   const isLoginPage = pathname === '/login';
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Don't render the navbar on the login page
   if (isLoginPage) {
     return null;
   }
 
-  // Show a minimal navbar while checking auth
-  if (isChecking) {
-    return (
-      <nav className="navbar">
-        <div className="logo">
-          <Link href="/">SSS Image Tagging</Link>
-        </div>
-      </nav>
-    );
-  }
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
 
   return (
     <nav className="navbar">
@@ -53,18 +59,35 @@ const Navbar = () => {
             >
               Gallery
             </Link>
-            <Link 
-              href="/uploads" 
-              className={`nav-link ${pathname === '/uploads' ? 'active' : ''}`}
-            >
-              Uploads
-            </Link>
-            <button 
-              onClick={logout} 
-              className="logout-button"
-            >
-              Logout
-            </button>
+            {user.role === 'admin' && (
+              <Link 
+                href="/dashboard" 
+                className={`nav-link ${pathname === '/dashboard' ? 'active' : ''}`}
+              >
+                Dashboard
+              </Link>
+            )}
+            <div className="avatar-container" ref={dropdownRef}>
+              <button 
+                className="avatar-button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              >
+                {getInitials(user.displayName || user.email)}
+              </button>
+              {isDropdownOpen && (
+                <div className="avatar-dropdown">
+                  <div className="dropdown-user-info">
+                    {user.displayName || user.email}
+                  </div>
+                  <button 
+                    onClick={logout} 
+                    className="dropdown-logout-button"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <>
