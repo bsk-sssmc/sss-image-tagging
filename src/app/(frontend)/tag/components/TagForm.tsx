@@ -459,44 +459,16 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       try {
         const response = await fetch(`/api/image-tags?where[mediaId][equals]=${currentImageId}&populate[location]=true&populate[occasion]=true&populate[createdBy]=true&sort=-createdAt&limit=1`);
         if (!response.ok) return;
-        
         const data = await response.json();
         if (data.docs && data.docs.length > 0) {
           const latest = data.docs[0];
           setLatestTag(latest);
-          
-          // Set form fields with latest tag info
-          if (latest.location) {
-            setSelectedLocation(latest.location);
-            setLocationInput(latest.location.name);
-            setLocationConfidence(latest.locationConfidence || '3');
-          }
-          
-          if (latest.occasion) {
-            setSelectedOccasion(latest.occasion);
-            setOccasionInput(latest.occasion.name);
-            setOccasionConfidence(latest.occasionConfidence || '3');
-          }
-          
-          if (latest.whenType && latest.whenValue) {
-            setDateType(latest.whenType);
-            setDateValue(latest.whenValue);
-            setDateConfidence(latest.whenValueConfidence || '3');
-          }
-          
-          if (latest.context) {
-            setContext(latest.context);
-          }
-          
-          if (latest.remarks) {
-            setRemarks(latest.remarks);
-          }
+          // Do NOT set form fields with latest tag info, just show as reference
         }
       } catch (error) {
         console.error('Error fetching latest tag:', error);
       }
     };
-
     fetchLatestTag();
   }, [currentImageId]);
 
@@ -847,9 +819,9 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
             )}
           </label>
           {latestTag?.location && (
-            <span className="latest-tag-indicator">
-              Latest tag by {latestTag.createdBy.displayName}
-            </span>
+            <div className="latest-tag-inline">
+              Latest tag by {latestTag.createdBy.displayName}; {latestTag.location.name}
+            </div>
           )}
         </div>
         <div className="dropdown-container" ref={locationDropdownRef}>
@@ -916,29 +888,27 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
 
       {/* Occasion Input */}
       <div className="form-group">
+        <label>Any occasion / festival around the image?</label>
+        {latestTag?.occasion && (
+          <div className="latest-tag-inline">
+            Latest tag by {latestTag.createdBy.displayName}; {latestTag.occasion.name}
+          </div>
+        )}
         <div className="input-header">
-          <label>
-            Any occasion / festival around the image?
-            {selectedOccasion && (
-              <div className="star-rating">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span
-                    key={star}
-                    className={`star ${star <= (occasionHoverRating || parseInt(occasionConfidence)) ? 'filled' : ''}`}
-                    onMouseEnter={() => setOccasionHoverRating(star)}
-                    onMouseLeave={() => setOccasionHoverRating(0)}
-                    onClick={() => setOccasionConfidence(star.toString())}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-            )}
-          </label>
-          {latestTag?.occasion && (
-            <span className="latest-tag-indicator">
-              Latest tag by {latestTag.createdBy.displayName}
-            </span>
+          {selectedOccasion && (
+            <div className="star-rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`star ${star <= (occasionHoverRating || parseInt(occasionConfidence)) ? 'filled' : ''}`}
+                  onMouseEnter={() => setOccasionHoverRating(star)}
+                  onMouseLeave={() => setOccasionHoverRating(0)}
+                  onClick={() => setOccasionConfidence(star.toString())}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
           )}
         </div>
         <div className="dropdown-container" ref={occasionDropdownRef}>
@@ -1005,29 +975,35 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
 
       {/* Date Input */}
       <div className="form-group">
-        <div className="input-header">
-          <label>
-            When was this image taken?
-            {dateValue && (
-              <div className="star-rating">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span
-                    key={star}
-                    className={`star ${star <= (dateHoverRating || parseInt(dateConfidence)) ? 'filled' : ''}`}
-                    onMouseEnter={() => setDateHoverRating(star)}
-                    onMouseLeave={() => setDateHoverRating(0)}
-                    onClick={() => setDateConfidence(star.toString())}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
+        <label>When was this image taken?</label>
+        {latestTag?.whenValue && (
+          <div className="latest-tag-inline">
+            Latest tag by {latestTag.createdBy.displayName}
+            {latestTag.whenType && (
+              <>; {latestTag.whenType === 'full_date' && 'Full Date'}
+                 {latestTag.whenType === 'decades' && 'Decades'}
+                 {latestTag.whenType === 'year' && 'Year'}
+                 {latestTag.whenType === 'month_year' && 'Month-Year'}
+              </>
             )}
-          </label>
-          {latestTag?.whenValue && (
-            <span className="latest-tag-indicator">
-              Latest tag by {latestTag.createdBy.displayName}
-            </span>
+            ; {latestTag.whenValue}
+          </div>
+        )}
+        <div className="input-header">
+          {dateValue && (
+            <div className="star-rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`star ${star <= (dateHoverRating || parseInt(dateConfidence)) ? 'filled' : ''}`}
+                  onMouseEnter={() => setDateHoverRating(star)}
+                  onMouseLeave={() => setDateHoverRating(0)}
+                  onClick={() => setDateConfidence(star.toString())}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
           )}
         </div>
         <div className="date-inputs">
@@ -1201,6 +1177,11 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
       {/* Context Input */}
       <div className="form-group">
         <label>What is the picture about? (Context)</label>
+        {latestTag?.context && (
+          <div className="latest-tag-inline">
+            Latest tag by {latestTag.createdBy.displayName}; {latestTag.context}
+          </div>
+        )}
         <div className="input-group">
           <textarea
             value={context}
@@ -1265,7 +1246,10 @@ export default function TagForm({ onSubmit, currentImageUrl, currentImageId }: T
         onSubmit={handleCreateLocation}
         title="Create New Location"
         fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true }
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'shortDescription', label: 'Short Description', type: 'textarea', required: false },
+          { name: 'city', label: 'City', type: 'text', required: false },
+          { name: 'state', label: 'State', type: 'text', required: false }
         ]}
       />
 

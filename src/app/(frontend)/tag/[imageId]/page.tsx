@@ -9,6 +9,8 @@ import VerifiedInfo from '../components/VerifiedInfo';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 
+import '../styles.css';
+
 interface Media {
   id: string;
   url: string;
