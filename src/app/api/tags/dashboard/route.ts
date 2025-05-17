@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
       'populate[occasion]': 'true',
       'populate[personTags.personId]': 'true',
       'populate[createdBy]': 'true',
+      depth: '1',
     });
 
     if (userFilter) {

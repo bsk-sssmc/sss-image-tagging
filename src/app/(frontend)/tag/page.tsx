@@ -70,7 +70,7 @@ export default function TagPage() {
   const fetchSpecificImage = async (id: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/media/${id}`, {
+      const response = await fetch(`/api/images/${id}`, {
         credentials: 'include',
       });
       
@@ -90,7 +90,7 @@ export default function TagPage() {
   const fetchRandomImage = useCallback(async (updateUrl: boolean = false) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/media/random', {
+      const response = await fetch('/api/images/random', {
         credentials: 'include',
       });
       

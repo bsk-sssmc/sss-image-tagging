@@ -79,7 +79,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/media/${id}`, {
+      const response = await fetch(`/api/images/${id}`, {
         credentials: 'include',
       });
       
@@ -106,7 +106,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/media/random', {
+      const response = await fetch('/api/images/random', {
         credentials: 'include',
       });
       

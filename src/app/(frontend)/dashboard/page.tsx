@@ -24,7 +24,7 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-container">
-      <h1 className="dashboard-header">DASHBOARD</h1>
+      <h1 className="dashboard-header">Dashboard</h1>
       <DashboardTagsTable />
     </div>
   );

@@ -28,7 +28,7 @@ const Comments: CollectionConfig = {
     {
       name: 'image',
       type: 'relationship',
-      relationTo: 'media',
+      relationTo: 'images',
       required: true,
     },
     {

@@ -10,7 +10,7 @@ export const Media: CollectionConfig = {
     delete: () => true,
   },
   upload: {
-    disableLocalStorage: true,
+    // disableLocalStorage: true,
     adminThumbnail: 'thumbnail',
     mimeTypes: ['image/*'],
     imageSizes: [
@@ -33,6 +33,8 @@ export const Media: CollectionConfig = {
         effort: 6,
       },
     },
+    staticURL: '/media',
+    staticDir: 'media',
   },
   fields: [
     {
@@ -63,5 +65,20 @@ export const Media: CollectionConfig = {
     useAsTitle: 'filename',
     defaultColumns: ['filename', 'alt', 'createdAt'],
     group: 'Media',
+    enableRichTextRelationship: true,
+    enableRichTextLink: true,
+    description: 'Upload and manage media files',
+    listSearchableFields: ['filename', 'alt'],
+    pagination: {
+      defaultLimit: 50,
+    },
+    components: {
+      views: [
+        {
+          path: '/',
+          Component: 'MediaList',
+        },
+      ],
+    },
   },
 }

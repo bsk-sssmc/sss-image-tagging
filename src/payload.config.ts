@@ -10,7 +10,7 @@ import sharp from 'sharp'
 import { s3Storage } from '@payloadcms/storage-s3';
 
 import { Users } from './collections/Users'
-import { Media } from './collections/Media'
+import { Images } from './collections/Images'
 import { Locations } from './collections/Locations'
 import { Occasions } from './collections/Occasions'
 import { Persons } from './collections/Persons'
@@ -31,7 +31,7 @@ export default buildConfig({
   auth: {
     jwtOrder: ['Bearer', 'cookie', 'JWT'],
   },
-  collections: [Users, Media, Occasions, Locations, Persons, ImageTags, Albums, Comments],
+  collections: [Users, Images, Occasions, Locations, Persons, ImageTags, Albums, Comments],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -45,11 +45,12 @@ export default buildConfig({
     payloadCloudPlugin(),
     s3Storage({
       collections: {
-        media: {
-          disableLocalStorage: true,
+        images: {
+          disableLocalStorage: false,
           generateFileURL: ({ filename }: { filename: string }) => {
             return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${filename}`
           },
+          prefix: 'images/',
         },
       },
       bucket: process.env.S3_BUCKET!,

@@ -68,7 +68,7 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
-    media: Media;
+    images: Image;
     occasions: Occasion;
     locations: Location;
     persons: Person;
@@ -82,7 +82,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
+    images: ImagesSelect<false> | ImagesSelect<true>;
     occasions: OccasionsSelect<false> | OccasionsSelect<true>;
     locations: LocationsSelect<false> | LocationsSelect<true>;
     persons: PersonsSelect<false> | PersonsSelect<true>;
@@ -148,13 +148,16 @@ export interface User {
   password?: string | null;
 }
 /**
+ * Upload and manage media files
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
+ * via the `definition` "images".
  */
-export interface Media {
+export interface Image {
   id: string;
   mediaId: string;
   alt?: string | null;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -269,7 +272,7 @@ export interface ImageTag {
   whenType?: ('' | 'full_date' | 'decades' | 'year' | 'month_year') | null;
   whenValue?: string | null;
   whenValueConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
-  mediaId: string | Media;
+  mediaId: string | Image;
   personTags?:
     | {
         personId: string | Person;
@@ -305,7 +308,7 @@ export interface Album {
   name: string;
   slug?: string | null;
   shortDescription?: string | null;
-  images: (string | Media)[];
+  images: (string | Image)[];
   updatedAt: string;
   createdAt: string;
 }
@@ -317,7 +320,7 @@ export interface Comment {
   id: string;
   commentText: string;
   commentBy: string | User;
-  image: string | Media;
+  image: string | Image;
   createdAt: string;
   commentUpvotes: number;
   commentDownvotes: number;
@@ -350,8 +353,8 @@ export interface PayloadLockedDocument {
         value: string | User;
       } | null)
     | ({
-        relationTo: 'media';
-        value: string | Media;
+        relationTo: 'images';
+        value: string | Image;
       } | null)
     | ({
         relationTo: 'occasions';
@@ -438,11 +441,12 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
+ * via the `definition` "images_select".
  */
-export interface MediaSelect<T extends boolean = true> {
+export interface ImagesSelect<T extends boolean = true> {
   mediaId?: T;
   alt?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

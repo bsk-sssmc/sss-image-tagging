@@ -64,7 +64,7 @@ const ImageTags: CollectionConfig = {
     {
       name: 'mediaId',
       type: 'relationship',
-      relationTo: 'media',
+      relationTo: 'images',
       required: true,
       label: 'Media',
       description: 'The picture this tag belongs to',

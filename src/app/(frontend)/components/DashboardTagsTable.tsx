@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Link from 'next/link';
 
@@ -46,6 +46,7 @@ interface DashboardTagsTableProps {
 export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTableProps) {
   const { user } = useAuth();
   const [tags, setTags] = useState<Tag[]>(initialTags);
+  const [allFetchedTags, setAllFetchedTags] = useState<Tag[]>(initialTags);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -56,6 +57,18 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
   const [expandedPills, setExpandedPills] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [tooltip, setTooltip] = useState<{ url: string; alt: string; x: number; y: number; position: 'top' | 'bottom' } | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Compute unique users from all fetched tags
+  const userOptions = useMemo(() => {
+    const users = allFetchedTags
+      .map(tag => tag.createdBy)
+      .filter(u => u && typeof u === 'object' && u.displayName)
+      .map(u => ({ id: u.id, displayName: u.displayName }));
+    const unique = Array.from(new Map(users.map(u => [u.id, u])).values());
+    return unique;
+  }, [allFetchedTags]);
 
   useEffect(() => {
     fetchTags();
@@ -68,10 +81,18 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
         page: currentPage.toString(),
         limit: itemsPerPage.toString(),
         sort: `createdAt:${sortOrder}`,
-        user: userFilter,
+        'populate[location]': 'true',
+        'populate[occasion]': 'true',
+        'populate[personTags.personId]': 'true',
+        'populate[createdBy]': 'true',
+        depth: '1',
       });
+      if (userFilter) {
+        queryParams.append('where[createdBy][equals]', userFilter);
+      }
 
-      const response = await fetch(`/api/tags/dashboard?${queryParams}`, {
+      // Fetch directly from Payload CMS REST API
+      const response = await fetch(`/api/image-tags?${queryParams.toString()}`, {
         credentials: 'include',
       });
 
@@ -80,8 +101,13 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
       }
 
       const data = await response.json();
-      setTags(data.tags);
-      setTotalItems(data.total);
+      console.log('Payload REST API fetched tags:', data.docs);
+      setTags(data.docs);
+      // If not filtering by user, update allFetchedTags
+      if (!userFilter) {
+        setAllFetchedTags(data.docs);
+      }
+      setTotalItems(data.totalDocs);
       setSelectedIds([]); // Clear selection on new fetch
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -162,17 +188,24 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
   }
 
   return (
-    <div className="table-container">
+    <div className="table-container" ref={tableRef}>
       <div className="filters-section">
         <div className="filters-container">
           <div className="filter-dropdown">
-            <input
-              type="text"
-              placeholder="Filter by user name..."
+            {/* Dropdown for user filter */}
+            <select
               value={userFilter}
-              onChange={handleUserFilterChange}
+              onChange={e => {
+                setUserFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="filter-input"
-            />
+            >
+              <option value="">All Users</option>
+              {userOptions.map(user => (
+                <option key={user.id} value={user.id}>{user.displayName}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -239,21 +272,49 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
                       aria-label={`Select tag ${tag.id}`}
                     />
                   </td>
-                  <td>{tag.createdBy?.displayName || '-'}</td>
+                  <td>
+                    {/* Always show displayName, even if createdBy is just an ID */}
+                    {typeof tag.createdBy === 'string'
+                      ? userOptions.find(u => u.id === tag.createdBy)?.displayName || '-'
+                      : (typeof tag.createdBy === 'object' && tag.createdBy !== null && 'displayName' in tag.createdBy
+                        ? tag.createdBy.displayName
+                        : '-')}
+                  </td>
                   <td>{new Date(tag.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="image-link" style={{ position: 'relative', display: 'inline-block' }}>
-                      <a href={`/tag/${tag.mediaId.id}`} className="image-link">
+                      <a
+                        href={`/tag/${tag.mediaId.id}`}
+                        className="image-link"
+                        onMouseEnter={e => {
+                          const linkRect = (e.target as HTMLElement).getBoundingClientRect();
+                          const tableRect = tableRef.current?.getBoundingClientRect();
+                          const tooltipHeight = 200; // px
+                          const margin = 12; // px
+                          let position: 'top' | 'bottom' = 'bottom';
+                          if (tableRect) {
+                            // If not enough space below in the table, show above
+                            if (linkRect.bottom + tooltipHeight + margin > tableRect.bottom && linkRect.top - tooltipHeight - margin > tableRect.top) {
+                              position = 'top';
+                            }
+                          } else {
+                            // fallback to viewport
+                            if (linkRect.bottom + tooltipHeight + margin > window.innerHeight && linkRect.top - tooltipHeight - margin > 0) {
+                              position = 'top';
+                            }
+                          }
+                          setTooltip({
+                            url: tag.mediaId.url,
+                            alt: tag.mediaId.alt || tag.mediaId.filename,
+                            x: linkRect.left + linkRect.width / 2,
+                            y: position === 'top' ? linkRect.top : linkRect.bottom,
+                            position,
+                          });
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                      >
                         {tag.mediaId.filename}
                       </a>
-                      <div className="image-preview-tooltip">
-                        <img
-                          src={tag.mediaId.url}
-                          alt={tag.mediaId.alt || tag.mediaId.filename}
-                          style={{ maxWidth: 180, maxHeight: 180 }}
-                          loading="lazy"
-                        />
-                      </div>
                     </div>
                   </td>
                   <td>
@@ -281,6 +342,27 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
           </tbody>
         </table>
       </div>
+
+      {tooltip && (
+        <div
+          className={`image-preview-tooltip-fixed ${tooltip.position}`}
+          style={{
+            position: 'fixed',
+            left: tooltip.x,
+            top: tooltip.position === 'top' ? tooltip.y - 200 - 12 : tooltip.y + 12,
+            zIndex: 9999,
+            transform: 'translateX(-50%)',
+            pointerEvents: 'none',
+          }}
+        >
+          <img
+            src={tooltip.url}
+            alt={tooltip.alt}
+            style={{ maxWidth: 180, maxHeight: 180, display: 'block', borderRadius: '0.25rem' }}
+            loading="lazy"
+          />
+        </div>
+      )}
 
       <div className="pagination-controls">
         <div className="items-per-page">
