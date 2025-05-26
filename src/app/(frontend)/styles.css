@@ -1,3 +1,4 @@
+/* Base styles */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -11,10 +12,283 @@ body {
 }
 
 body {
-  font-family: system-ui;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: #1a1a1a;
-  color: rgb(255, 255, 255);
+  color: #ffffff;
   -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+/* Standardized Button Styles */
+button, 
+.button,
+.auth-button,
+.logout-button,
+.submit-button,
+.view-button,
+.profile-edit-button,
+.profile-save-button,
+.profile-cancel-button,
+.add-people-button,
+.bulk-action-btn,
+.notification-button,
+.pagination-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  background: #4a90e2;
+  color: white;
+}
+
+button:hover,
+.button:hover,
+.auth-button:hover,
+.submit-button:hover,
+.view-button:hover,
+.profile-edit-button:hover,
+.profile-save-button:hover,
+.add-people-button:hover,
+.notification-button:hover,
+.pagination-button:hover:not(:disabled) {
+  background: #357abd;
+}
+
+button:disabled,
+.button:disabled,
+.submit-button:disabled,
+.pagination-button:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Danger buttons */
+.logout-button,
+.profile-cancel-button,
+.bulk-action-btn.delete {
+  background: #dc3545;
+}
+
+.logout-button:hover,
+.profile-cancel-button:hover,
+.bulk-action-btn.delete:hover {
+  background: #c82333;
+}
+
+/* Form Elements */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 2px solid #404040;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: white;
+  transition: border-color 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+/* Container Styles */
+.container,
+.auth-container,
+.tag-container,
+.gallery-container,
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Card Styles */
+.card,
+.auth-form,
+.tag-form,
+.comments-section,
+.profile-section,
+.gallery-card {
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+  margin-bottom: 2.5rem;
+}
+
+/* Table Styles */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #404040;
+}
+
+th {
+  background: #404040;
+  font-weight: 600;
+  color: #fff;
+}
+
+tr:hover {
+  background: #404040;
+}
+
+/* Navigation */
+.navbar {
+  background: #2a2a2a;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.nav-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+  color: #4a90e2;
+}
+
+/* Utility Classes */
+.text-center { text-align: center; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.25rem; }
+  
+  .container,
+  .auth-container,
+  .tag-container,
+  .gallery-container,
+  .dashboard-container {
+    padding: 1rem;
+  }
+  
+  .navbar {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Accessibility Improvements */
+:focus {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  body {
+    background: #000;
+    color: #fff;
+  }
+  
+  button,
+  .button {
+    background: #fff;
+    color: #000;
+  }
+  
+  input,
+  select,
+  textarea {
+    border: 2px solid #fff;
+  }
+}
+
+/* Loading States */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #4a90e2;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error States */
+.error-message {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* Success States */
+.success-message {
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 .home {
@@ -54,7 +328,7 @@ h1 {
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
 }
 
 .form-group input {
@@ -305,12 +579,9 @@ h1 {
 }
 
 .tag-form {
-  height: 70vh;
-  overflow-y: auto;
-  padding-right: 1rem;
-  background: #2a2a2a;
-  border-radius: 8px;
-  padding: 1.5rem;
+  height: auto !important;
+  overflow-y: visible !important;
+  max-height: none !important;
 }
 
 .tag-form h2 {
@@ -3129,4 +3400,437 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-style: solid;
   border-color: #374151 transparent transparent transparent;
 }
+
+/* Filter styles */
+.filters-container {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-label {
+  font-weight: bold;
+  color: #666;
+}
+
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-option {
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-option:hover {
+  background: #f0f0f0;
+}
+
+.filter-option.selected {
+  background: #0070f3;
+  color: white;
+  border-color: #0070f3;
+}
+
+/* TagForm Styles */
+.tag-form {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.submit-button {
+  background-color: #007bff;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Confidence Rating Styles */
+.confidence-rating {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.confidence-rating button {
+  background: none;
+  border: 1px solid #ddd;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confidence-rating button:hover {
+  background-color: #f8f9fa;
+}
+
+.confidence-rating button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* Dropdown Styles */
+.dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.dropdown-item {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* Tag Preview Styles */
+.tag-preview {
+  display: inline-flex;
+  align-items: center;
+  background-color: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.tag-preview button {
+  background: none;
+  border: none;
+  padding: 0 0.25rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  color: #666;
+}
+
+.tag-preview button:hover {
+  color: #dc3545;
+}
+
+/* Comments Section Styles */
+.comments-section-container {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comment-form {
+  margin-bottom: 1.5rem;
+}
+
+.comment-form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 1rem;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.comment-item {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.comment-author {
+  font-weight: 500;
+}
+
+.comment-date {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.comment-content {
+  margin-bottom: 0.5rem;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.comment-action {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.comment-action:hover {
+  color: #007bff;
+}
+
+.reply-form {
+  margin-top: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid #ddd;
+}
+
+/* GLOBAL OVERRIDE: Remove all backgrounds, border-radius, and box-shadows from all major containers and their descendants for a flat minimalist look
+.auth-form, .profile-section, .tag-form, .tags-section, .table-container, 
+.comments-section, .gallery-card, .comments-section-container, .dashboard-container, 
+.home-container, .tags-table, .tags-table *, .table-container *, .profile-section *, 
+.auth-form *, .tag-form *, .tags-section *, .comments-section *, .gallery-card *, 
+.comments-section-container *, .dashboard-container *, .home-container *, th, td {
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+} */
+
+/* --- Tag Form Modern Minimalist Dark Layout --- */
+.tag-form {
+  background: #1a1a1a !important; /* site background */
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 2.5rem 2rem 2rem 2rem !important;
+  max-width: 900px;
+  margin: 2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.tag-form h2, .tag-form label {
+  color: #4a90e2;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  font-family: inherit;
+}
+
+.tag-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.tag-form label {
+  color: #e0e0e0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.tag-form input,
+.tag-form select,
+.tag-form textarea {
+  background: #232323 !important;
+  border: 2px solid #4a90e2 !important;
+  border-radius: 12px !important;
+  font-size: 1.1rem;
+  padding: 0.9rem 1.2rem;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  transition: border-color 0.2s;
+}
+
+.tag-form input:focus,
+.tag-form select:focus,
+.tag-form textarea:focus {
+  border-color: #357abd !important;
+  outline: none;
+}
+
+.tag-form .dropdown-menu {
+  background: #232323 !important;
+  border-radius: 12px !important;
+  border: 2px solid #4a90e2 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-top: 0.25rem;
+}
+
+.tag-form .dropdown-item {
+  font-size: 1.05rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 8px;
+  color: #e0e0e0;
+}
+
+.tag-form .dropdown-item:hover {
+  background: #4a90e2;
+  color: #fff;
+}
+
+.tag-form .tag-preview {
+  background: #232323;
+  color: #4a90e2;
+  border-radius: 16px;
+  font-size: 1rem;
+  padding: 0.4rem 1rem;
+  margin: 0.2rem 0.2rem 0.2rem 0;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.tag-form .tag-preview button {
+  color: #4a90e2;
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.tag-form .tag-preview button:hover {
+  color: #357abd;
+}
+
+.tag-form .confidence-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.tag-form .confidence-rating label {
+  color: #e0e0e0;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+.tag-form .confidence-rating button {
+  background: #232323;
+  border: 2px solid #4a90e2;
+  color: #4a90e2;
+  border-radius: 8px;
+  padding: 0.3rem 0.9rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.tag-form .confidence-rating button.active,
+.tag-form .confidence-rating button:hover {
+  background: #4a90e2;
+  color: #fff;
+}
+
+.tag-form .submit-button {
+  background: #000 !important;
+  color: #fff !important;
+  border-radius: 2rem !important;
+  font-size: 1.3rem !important;
+  font-weight: 700;
+  padding: 0.9rem 0;
+  width: 220px;
+  margin: 2rem auto 0 auto;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.2s;
+}
+
+.tag-form .submit-button:hover {
+  background: #4a90e2 !important;
+  color: #fff !important;
+}
+
+@media (max-width: 900px) {
+  .tag-form {
+    max-width: 100%;
+    padding: 1.2rem 0.5rem !important;
+  }
+}
+
 

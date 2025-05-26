@@ -4,6 +4,7 @@ import './styles.css'
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './context/AuthContext'
+import Image from 'next/image'
 
 interface Location {
   id: string;
@@ -74,7 +75,6 @@ export default function HomePage() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState<string>('')
-  const [tempSelectedDate, setTempSelectedDate] = useState<string>('')
 
   // Add new state for image title filter
   const [selectedImageTitles, setSelectedImageTitles] = useState<string[]>([])
@@ -89,11 +89,6 @@ export default function HomePage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const currentTags = filteredTags.slice(startIndex, endIndex)
-
-  // Initialize tempSelectedDate when selectedDate changes
-  useEffect(() => {
-    setTempSelectedDate(selectedDate)
-  }, [selectedDate])
 
   // Extract unique values for filters
   const uniquePersons = useMemo(() => {
@@ -124,16 +119,6 @@ export default function HomePage() {
       }
     })
     return Array.from(occasions.entries())
-  }, [tags])
-
-  // Get unique dates from tags
-  const uniqueDates = useMemo(() => {
-    const dates = new Set<string>()
-    tags.forEach(tag => {
-      const date = new Date(tag.createdAt).toISOString().split('T')[0]
-      dates.add(date)
-    })
-    return Array.from(dates).sort().reverse()
   }, [tags])
 
   // Extract unique image titles for filter
@@ -215,7 +200,7 @@ export default function HomePage() {
     } else {
       fetchTags(user.id)
     }
-  }, [user])
+  }, [user, router])
 
   useEffect(() => {
     hasFetchedData.current = false
@@ -234,10 +219,6 @@ export default function HomePage() {
 
   const togglePillExpansion = (tagId: string) => {
     setExpandedPills(expandedPills === tagId ? null : tagId)
-  }
-
-  const handleImageClick = (mediaId: string) => {
-    router.push(`/tag/${mediaId}`)
   }
 
   const handleNameEdit = async (e: React.FormEvent) => {
@@ -581,14 +562,12 @@ export default function HomePage() {
                             {tag.mediaId.filename}
                           </a>
                           <div className="image-preview-tooltip">
-                            <img 
-                              src={tag.mediaId.url} 
+                            <Image
+                              src={tag.mediaId.url || ''}
                               alt={tag.mediaId.alt || tag.mediaId.filename}
-                              onError={(e) => {
-                                console.error('Error loading image:', e);
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                              loading="lazy"
+                              width={200}
+                              height={200}
+                              style={{ objectFit: 'cover' }}
                             />
                           </div>
                         </div>
@@ -677,49 +656,3 @@ export default function HomePage() {
     </div>
   )
 }
-
-// Add these styles to your CSS file
-const styles = `
-.filters-container {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.filter-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.filter-label {
-  font-weight: bold;
-  color: #666;
-}
-
-.filter-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.filter-option {
-  padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
-  border: 1px solid #ddd;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-option:hover {
-  background: #f0f0f0;
-}
-
-.filter-option.selected {
-  background: #0070f3;
-  color: white;
-  border-color: #0070f3;
-}
-`

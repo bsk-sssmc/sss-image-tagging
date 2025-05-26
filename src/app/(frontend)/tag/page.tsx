@@ -1,18 +1,35 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import ImageModal from './components/ImageModal';
 import TagForm from './components/TagForm';
 import Comments from './components/Comments';
 import VerifiedInfo from './components/VerifiedInfo';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
+import TagDefaultPage from './components/TagDefaultPage';
+import ExistingTags from './components/ExistingTags';
+import CreateEntryModal from './components/CreateEntryModal';
+import { useAuth } from '../context/AuthContext';
 
 interface Media {
   id: string;
   url: string;
   alt?: string;
+}
+
+interface FormData {
+  selectedPersons: Array<{ id: string; name: string }>;
+  selectedLocation: { id: string; name: string } | null;
+  locationConfidence: string;
+  selectedOccasion: { id: string; name: string } | null;
+  occasionConfidence: string;
+  dateType: string;
+  dateValue: string;
+  dateConfidence: string;
+  context: string;
+  remarks: string;
+  pins: Array<{ id?: string; personId?: string; x: number; y: number; confidence?: string }>;
 }
 
 export default function TagPage() {
@@ -23,6 +40,54 @@ export default function TagPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const imageId = searchParams.get('image');
+
+  const fetchSpecificImage = useCallback(async (id: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/images/${id}`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const data = await response.json();
+      setCurrentImage(data);
+    } catch (error) {
+      console.error('Error fetching specific image:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchRandomImage = useCallback(async (updateUrl: boolean = false) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/images/random', {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('401 response, redirecting to login...');
+          const from = encodeURIComponent('/tag');
+          router.push(`/login?from=${from}`);
+          return;
+        }
+        throw new Error('Failed to fetch image');
+      }
+      const data = await response.json();
+      setCurrentImage(data);
+      if (updateUrl) {
+        router.replace(`/tag/${data.id}`, { scroll: false });
+      }
+    } catch (error) {
+      console.error('Error fetching image:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
 
   // Check authentication on page load
   useEffect(() => {
@@ -53,7 +118,7 @@ export default function TagPage() {
     };
 
     checkAuth();
-  }, [router, imageId]);
+  }, [router, imageId, fetchRandomImage, fetchSpecificImage]);
 
   useEffect(() => {
     const handleOpenImageModal = (event: CustomEvent) => {
@@ -67,54 +132,6 @@ export default function TagPage() {
     };
   }, []);
 
-  const fetchSpecificImage = async (id: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/images/${id}`, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch image');
-      }
-      
-      const data = await response.json();
-      setCurrentImage(data);
-    } catch (error) {
-      console.error('Error fetching specific image:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchRandomImage = useCallback(async (updateUrl: boolean = false) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/images/random', {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('401 response, redirecting to login...');
-          const from = encodeURIComponent('/tag');
-          router.push(`/login?from=${from}`);
-          return;
-        }
-        throw new Error('Failed to fetch image');
-      }
-      const data = await response.json();
-      setCurrentImage(data);
-      if (updateUrl) {
-        router.replace(`/tag/${data.id}`, { scroll: false });
-      }
-    } catch (error) {
-      console.error('Error fetching image:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
-
   const handleImageClick = () => {
     if (currentImage?.url) {
       setSelectedImage(currentImage.url);
@@ -127,7 +144,7 @@ export default function TagPage() {
     fetchRandomImage(true); // Always fetch a new random image and update URL
   };
 
-  const handleFormSubmit = async (formData: any) => {
+  const handleFormSubmit = async (formData: FormData) => {
     console.log('Tag form submitted with data:', formData);
     
     try {
@@ -201,7 +218,7 @@ export default function TagPage() {
         <div className="right-column">
           <TagForm 
             onSubmit={handleFormSubmit} 
-            currentImageUrl={currentImage?.url}
+            _currentImageUrl={currentImage?.url}
             currentImageId={currentImage?.id}
           />
         </div>
@@ -225,42 +242,6 @@ export default function TagPage() {
         onClose={() => setIsModalOpen(false)}
         imageUrl={selectedImage}
       />
-    </div>
-  );
-}
-
-export function TagDefaultPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const fetchRandomImage = async () => {
-      try {
-        const response = await fetch('/api/media/random', {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            const from = encodeURIComponent('/tag');
-            router.push(`/login?from=${from}`);
-            return;
-          }
-          throw new Error('Failed to fetch image');
-        }
-        
-        const data = await response.json();
-        router.replace(`/tag/${data.id}`);
-      } catch (error) {
-        console.error('Error fetching random image:', error);
-      }
-    };
-
-    fetchRandomImage();
-  }, [router]);
-
-  return (
-    <div className="loading-overlay">
-      <div className="loading-spinner"></div>
     </div>
   );
 } 

@@ -33,7 +33,6 @@ export const Media: CollectionConfig = {
         effort: 6,
       },
     },
-    staticURL: '/media',
     staticDir: 'media',
   },
   fields: [
@@ -71,14 +70,6 @@ export const Media: CollectionConfig = {
     listSearchableFields: ['filename', 'alt'],
     pagination: {
       defaultLimit: 50,
-    },
-    components: {
-      views: [
-        {
-          path: '/',
-          Component: 'MediaList',
-        },
-      ],
     },
   },
 }

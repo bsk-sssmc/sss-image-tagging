@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Link from 'next/link';
+import Image from 'next/image';
 
 interface Tag {
   id: string;
@@ -44,7 +44,7 @@ interface DashboardTagsTableProps {
 }
 
 export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTableProps) {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [tags, setTags] = useState<Tag[]>(initialTags);
   const [allFetchedTags, setAllFetchedTags] = useState<Tag[]>(initialTags);
   const [loading, setLoading] = useState(true);
@@ -63,18 +63,14 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
   // Compute unique users from all fetched tags
   const userOptions = useMemo(() => {
     const users = allFetchedTags
-      .map(tag => tag.createdBy)
-      .filter(u => u && typeof u === 'object' && u.displayName)
-      .map(u => ({ id: u.id, displayName: u.displayName }));
-    const unique = Array.from(new Map(users.map(u => [u.id, u])).values());
+      .map((tag: Tag) => tag.createdBy)
+      .filter((u: { id: string; displayName: string }) => u && typeof u === 'object' && u.displayName)
+      .map((u: { id: string; displayName: string }) => ({ id: u.id, displayName: u.displayName }));
+    const unique = Array.from(new Map(users.map((u: { id: string; displayName: string }) => [u.id, u])).values());
     return unique;
   }, [allFetchedTags]);
 
-  useEffect(() => {
-    fetchTags();
-  }, [currentPage, itemsPerPage, sortOrder, userFilter]);
-
-  const fetchTags = async () => {
+  const fetchTags = useCallback(async () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams({
@@ -114,13 +110,17 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, sortOrder, userFilter]);
+
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
 
   const handleSortToggle = () => {
-    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    setSortOrder((prev: 'asc' | 'desc') => prev === 'asc' ? 'desc' : 'asc');
   };
 
-  const handleUserFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleUserFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setUserFilter(e.target.value);
     setCurrentPage(1); // Reset to first page when filter changes
   };
@@ -128,7 +128,7 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const togglePillExpansion = (tagId: string) => {
-    setExpandedPills(prev => (prev === tagId ? null : tagId));
+    setExpandedPills((prev: string | null) => (prev === tagId ? null : tagId));
   };
 
   // Render confidence stars (if needed)
@@ -148,18 +148,18 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
     if (allSelected) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(tags.map(tag => tag.id));
+      setSelectedIds(tags.map((tag: Tag) => tag.id));
     }
   };
   const handleSelectRow = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    setSelectedIds((prev: string[]) => prev.includes(id) ? prev.filter((i: string) => i !== id) : [...prev, id]);
   };
 
   // Bulk actions
   const handleBulkStatus = async (status: string) => {
     setBulkLoading(true);
     try {
-      await Promise.all(selectedIds.map(id =>
+      await Promise.all(selectedIds.map((id: string) =>
         fetch(`/api/image-tags/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -174,7 +174,7 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
   const handleBulkDelete = async () => {
     setBulkLoading(true);
     try {
-      await Promise.all(selectedIds.map(id =>
+      await Promise.all(selectedIds.map((id: string) =>
         fetch(`/api/image-tags/${id}`, { method: 'DELETE' })
       ));
       await fetchTags();
@@ -195,14 +195,11 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
             {/* Dropdown for user filter */}
             <select
               value={userFilter}
-              onChange={e => {
-                setUserFilter(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={_handleUserFilterChange}
               className="filter-input"
             >
               <option value="">All Users</option>
-              {userOptions.map(user => (
+              {userOptions.map((user: { id: string; displayName: string }) => (
                 <option key={user.id} value={user.id}>{user.displayName}</option>
               ))}
             </select>
@@ -274,10 +271,10 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
                   </td>
                   <td>
                     {/* Always show displayName, even if createdBy is just an ID */}
-                    {typeof tag.createdBy === 'string'
-                      ? userOptions.find(u => u.id === tag.createdBy)?.displayName || '-'
+                    {typeof tag.createdBy === 'string' || (typeof tag.createdBy === 'object' && tag.createdBy !== null && 'id' in tag.createdBy)
+                      ? userOptions.find(u => u.id === (typeof tag.createdBy === 'string' ? tag.createdBy : (tag.createdBy as { id: string }).id))?.displayName || '-'
                       : (typeof tag.createdBy === 'object' && tag.createdBy !== null && 'displayName' in tag.createdBy
-                        ? tag.createdBy.displayName
+                        ? (tag.createdBy as { displayName: string }).displayName
                         : '-')}
                   </td>
                   <td>{new Date(tag.createdAt).toLocaleDateString()}</td>
@@ -345,21 +342,21 @@ export default function DashboardTagsTable({ initialTags = [] }: DashboardTagsTa
 
       {tooltip && (
         <div
-          className={`image-preview-tooltip-fixed ${tooltip.position}`}
+          className="tooltip"
           style={{
             position: 'fixed',
             left: tooltip.x,
-            top: tooltip.position === 'top' ? tooltip.y - 200 - 12 : tooltip.y + 12,
-            zIndex: 9999,
+            top: tooltip.position === 'top' ? tooltip.y - 220 : tooltip.y + 12,
             transform: 'translateX(-50%)',
-            pointerEvents: 'none',
+            zIndex: 1000,
           }}
         >
-          <img
+          <Image
             src={tooltip.url}
             alt={tooltip.alt}
-            style={{ maxWidth: 180, maxHeight: 180, display: 'block', borderRadius: '0.25rem' }}
-            loading="lazy"
+            width={200}
+            height={200}
+            style={{ objectFit: 'cover' }}
           />
         </div>
       )}

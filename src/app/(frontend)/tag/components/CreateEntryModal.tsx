@@ -12,7 +12,7 @@ interface CreateEntryModalProps {
   onClose: () => void;
   title: string;
   fields: Field[];
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: Record<string, string>) => Promise<void>;
 }
 
 export default function CreateEntryModal({ isOpen, onClose, title, fields, onSubmit }: CreateEntryModalProps) {

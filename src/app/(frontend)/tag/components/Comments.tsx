@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import CommentItem from './CommentItem';
 
 interface Comment {
@@ -31,11 +31,7 @@ export default function Comments({ imageId }: CommentsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchComments();
-  }, [imageId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setIsLoading(true);
     try {
       // Using PayloadCMS REST API to fetch comments with high depth to get all nested comments
@@ -72,7 +68,11 @@ export default function Comments({ imageId }: CommentsProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [imageId]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
 
   // Helper function to sort comments
   const sortComments = (comments: Comment[]) => {
@@ -124,11 +124,18 @@ export default function Comments({ imageId }: CommentsProps) {
       setComments(prevComments => [...prevComments, tempComment]);
       setNewComment('');
 
+      // Create the request body matching the PayloadCMS schema
       const requestBody = {
         commentText: newComment,
-        image: imageId,
+        image: {
+          relationTo: 'images',
+          value: imageId
+        },
         parentComment: null,
         depth: 0,
+        commentUpvotes: 0,
+        commentDownvotes: 0,
+        createdAt: new Date().toISOString()
       };
       
       console.log('Request body:', requestBody);
@@ -368,54 +375,127 @@ export default function Comments({ imageId }: CommentsProps) {
   };
 
   return (
-    <div className="comments-section">
-      <h3 className="comments-heading">Comments {comments.length > 0 && `(${comments.length})`}</h3>
+    <div className="comments-section-container">
+      <h3>Comments</h3>
       
-      {/* Comment Input Form - Only show for top-level comments */}
-      {!replyingTo && (
-        <form onSubmit={handleSubmit} className="comment-form">
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Write a comment... (Press Enter to submit, Shift+Enter for new line)"
-            maxLength={500}
-            className="comment-input"
-          />
-          <div className="comment-input-footer">
-            <span className="character-count">{newComment.length}/500</span>
-            <button type="submit" className="submit-comment" disabled={!newComment.trim()}>
-              Post Comment
-            </button>
-          </div>
-        </form>
-      )}
+      {/* Comment Form */}
+      <form className="comment-form" onSubmit={handleSubmit}>
+        <textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Write a comment..."
+          rows={3}
+        />
+        <button type="submit" className="submit-button" disabled={!newComment.trim()}>
+          Post Comment
+        </button>
+      </form>
 
       {/* Comments List */}
-      <div className="comments-list">
-        {isLoading ? (
-          <div className="loading-spinner-container">
-            <div className="loading-spinner"></div>
-          </div>
-        ) : !comments || comments.length === 0 ? (
-          <div className="no-comments">
-            <p className="no-comments-text">No Comments.</p>
-            <p className="no-comments-subtext">Be the first one to comment.</p>
-          </div>
-        ) : (
-          comments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              onReply={handleReply}
-              replyingTo={replyingTo}
-              onCancelReply={handleCancelReply}
-              onSubmitReply={handleSubmitReply}
-              onVote={handleVote}
-            />
-          ))
-        )}
-      </div>
+      {isLoading ? (
+        <div className="loading">Loading comments...</div>
+      ) : comments.length === 0 ? (
+        <div className="no-comments">No comments yet. Be the first to comment!</div>
+      ) : (
+        <div className="comment-list">
+          {comments.map((comment) => (
+            <div key={comment.id} className="comment-item">
+              <div className="comment-header">
+                <span className="comment-author">{comment.commentBy.name}</span>
+                <span className="comment-date">
+                  {new Date(comment.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="comment-content">{comment.commentText}</div>
+              <div className="comment-actions">
+                <button
+                  className="comment-action"
+                  onClick={() => handleVote(comment.id, 'upvote')}
+                >
+                  ↑ {comment.commentUpvotes}
+                </button>
+                <button
+                  className="comment-action"
+                  onClick={() => handleVote(comment.id, 'downvote')}
+                >
+                  ↓ {comment.commentDownvotes}
+                </button>
+                <button
+                  className="comment-action"
+                  onClick={() => handleReply(comment.id)}
+                >
+                  Reply
+                </button>
+              </div>
+
+              {/* Reply Form */}
+              {replyingTo === comment.id && (
+                <div className="reply-form">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Write a reply..."
+                    rows={2}
+                  />
+                  <div className="reply-actions">
+                    <button
+                      type="button"
+                      className="submit-button"
+                      onClick={() => handleSubmitReply(comment.id, newComment)}
+                      disabled={!newComment.trim()}
+                    >
+                      Post Reply
+                    </button>
+                    <button
+                      type="button"
+                      className="comment-action"
+                      onClick={handleCancelReply}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Nested Replies */}
+              {comments
+                .filter((reply) => reply.parentComment?.value === comment.id)
+                .map((reply) => (
+                  <div key={reply.id} className="comment-item reply">
+                    <div className="comment-header">
+                      <span className="comment-author">{reply.commentBy.name}</span>
+                      <span className="comment-date">
+                        {new Date(reply.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="comment-content">{reply.commentText}</div>
+                    <div className="comment-actions">
+                      <button
+                        className="comment-action"
+                        onClick={() => handleVote(reply.id, 'upvote')}
+                      >
+                        ↑ {reply.commentUpvotes}
+                      </button>
+                      <button
+                        className="comment-action"
+                        onClick={() => handleVote(reply.id, 'downvote')}
+                      >
+                        ↓ {reply.commentDownvotes}
+                      </button>
+                      <button
+                        className="comment-action"
+                        onClick={() => handleReply(reply.id)}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 } 

@@ -73,8 +73,21 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error('Login error:', error)
+    
+    // Provide more specific error messages based on the error type
+    let errorMessage = 'Login failed'
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid credentials')) {
+        errorMessage = 'Invalid email or password'
+      } else if (error.message.includes('No JSON data found')) {
+        errorMessage = 'Invalid request format'
+      } else if (error.message.includes('No token received')) {
+        errorMessage = 'Authentication failed'
+      }
+    }
+    
     return NextResponse.json(
-      { errors: [{ message: 'Login failed' }] },
+      { errors: [{ message: errorMessage }] },
       { status: 401 }
     )
   }

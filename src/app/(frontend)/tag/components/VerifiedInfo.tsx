@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/app/(frontend)/context/AuthContext';
 
 interface VerifiedInfoProps {
   imageId: string;

@@ -157,6 +157,27 @@ export interface Image {
   id: string;
   mediaId: string;
   alt?: string | null;
+  tags?:
+    | {
+        location?: string | null;
+        occasion?: string | null;
+        whenType?: string | null;
+        whenValue?: string | null;
+        context?: string | null;
+        personTags?:
+          | {
+              personId: string;
+              confidence?: string | null;
+              coordinates: {
+                x: number;
+                y: number;
+              };
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -269,10 +290,25 @@ export interface Person {
  */
 export interface ImageTag {
   id: string;
+  /**
+   * Type of date information
+   */
   whenType?: ('' | 'full_date' | 'decades' | 'year' | 'month_year') | null;
+  /**
+   * Value received from frontend form
+   */
   whenValue?: string | null;
+  /**
+   * How confident are you about this date?
+   */
   whenValueConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
+  /**
+   * The picture this tag belongs to
+   */
   mediaId: string | Image;
+  /**
+   * Detailed information about people in the picture
+   */
   personTags?:
     | {
         personId: string | Person;
@@ -285,11 +321,29 @@ export interface ImageTag {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Location where the picture was taken
+   */
   location?: (string | null) | Location;
+  /**
+   * How confident are you about this location?
+   */
   locationConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
+  /**
+   * Occasion of the picture
+   */
   occasion?: (string | null) | Occasion;
+  /**
+   * How confident are you about this occasion?
+   */
   occasionConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
+  /**
+   * Any incident or information about the context of the picture
+   */
   context?: string | null;
+  /**
+   * Any additional remarks about the picture
+   */
   remarks?: string | null;
   /**
    * Indicates whether the tag is not verified, just tagged, or has been verified by an admin.
@@ -446,6 +500,29 @@ export interface UsersSelect<T extends boolean = true> {
 export interface ImagesSelect<T extends boolean = true> {
   mediaId?: T;
   alt?: T;
+  tags?:
+    | T
+    | {
+        location?: T;
+        occasion?: T;
+        whenType?: T;
+        whenValue?: T;
+        context?: T;
+        personTags?:
+          | T
+          | {
+              personId?: T;
+              confidence?: T;
+              coordinates?:
+                | T
+                | {
+                    x?: T;
+                    y?: T;
+                  };
+              id?: T;
+            };
+        id?: T;
+      };
   prefix?: T;
   updatedAt?: T;
   createdAt?: T;

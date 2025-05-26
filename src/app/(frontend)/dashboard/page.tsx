@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import DashboardTagsTable from '../components/DashboardTagsTable';
+import ConsolidatedTagsTable from '../components/ConsolidatedTagsTable';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -26,6 +27,9 @@ export default function DashboardPage() {
     <div className="dashboard-container">
       <h1 className="dashboard-header">Dashboard</h1>
       <DashboardTagsTable />
+      <div style={{ marginTop: '2rem' }}>
+        <ConsolidatedTagsTable />
+      </div>
     </div>
   );
 } 

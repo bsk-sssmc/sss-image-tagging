@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 const ImageTags: CollectionConfig = {
   slug: 'image-tags',
@@ -16,7 +16,9 @@ const ImageTags: CollectionConfig = {
       name: 'whenType',
       type: 'select',
       label: 'When Type',
-      description: 'Type of date information',
+      admin: {
+        description: 'Type of date information'
+      },
       options: [
         {
           label: 'Select an option',
@@ -45,13 +47,17 @@ const ImageTags: CollectionConfig = {
       name: 'whenValue',
       type: 'text',
       label: 'When Value',
-      description: 'Value received from frontend form',
+      admin: {
+        description: 'Value received from frontend form'
+      },
     },
     {
       name: 'whenValueConfidence',
       type: 'select',
       label: 'When Value Confidence',
-      description: 'How confident are you about this date?',
+      admin: {
+        description: 'How confident are you about this date?'
+      },
       options: [
         { label: '1 - Not confident', value: '1' },
         { label: '2 - Somewhat confident', value: '2' },
@@ -67,13 +73,17 @@ const ImageTags: CollectionConfig = {
       relationTo: 'images',
       required: true,
       label: 'Media',
-      description: 'The picture this tag belongs to',
+      admin: {
+        description: 'The picture this tag belongs to'
+      },
     },
     {
       name: 'personTags',
       type: 'array',
       label: 'Person Tags',
-      description: 'Detailed information about people in the picture',
+      admin: {
+        description: 'Detailed information about people in the picture'
+      },
       fields: [
         {
           name: 'personId',
@@ -81,13 +91,11 @@ const ImageTags: CollectionConfig = {
           relationTo: 'persons',
           required: true,
           label: 'Person',
-          description: 'The person being tagged',
         },
         {
           name: 'confidence',
           type: 'select',
           label: 'Confidence Level',
-          description: 'How confident are you about this person tag?',
           options: [
             { label: '1 - Not confident', value: '1' },
             { label: '2 - Somewhat confident', value: '2' },
@@ -152,13 +160,17 @@ const ImageTags: CollectionConfig = {
       type: 'relationship',
       relationTo: 'locations',
       label: 'Location',
-      description: 'Location where the picture was taken',
+      admin: {
+        description: 'Location where the picture was taken'
+      },
     },
     {
       name: 'locationConfidence',
       type: 'select',
       label: 'Location Confidence',
-      description: 'How confident are you about this location?',
+      admin: {
+        description: 'How confident are you about this location?'
+      },
       options: [
         { label: '1 - Not confident', value: '1' },
         { label: '2 - Somewhat confident', value: '2' },
@@ -173,13 +185,17 @@ const ImageTags: CollectionConfig = {
       type: 'relationship',
       relationTo: 'occasions',
       label: 'Occasion',
-      description: 'Occasion of the picture',
+      admin: {
+        description: 'Occasion of the picture'
+      },
     },
     {
       name: 'occasionConfidence',
       type: 'select',
       label: 'Occasion Confidence',
-      description: 'How confident are you about this occasion?',
+      admin: {
+        description: 'How confident are you about this occasion?'
+      },
       options: [
         { label: '1 - Not confident', value: '1' },
         { label: '2 - Somewhat confident', value: '2' },
@@ -193,13 +209,17 @@ const ImageTags: CollectionConfig = {
       name: 'context',
       type: 'textarea',
       label: 'Context',
-      description: 'Any incident or information about the context of the picture',
+      admin: {
+        description: 'Any incident or information about the context of the picture'
+      },
     },
     {
       name: 'remarks',
       type: 'textarea',
       label: 'Remarks',
-      description: 'Any additional remarks about the picture',
+      admin: {
+        description: 'Any additional remarks about the picture'
+      },
     },
     {
       name: 'status',

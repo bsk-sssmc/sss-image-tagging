@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 interface Person {
@@ -44,12 +44,25 @@ interface ExistingTagsProps {
   onTagRemove: (tagId: string) => void;
 }
 
+interface ApiCacheData {
+  docs: ExistingTag[];
+  totalDocs: number;
+  limit: number;
+  totalPages: number;
+  page: number;
+  pagingCounter: number;
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+  prevPage: number | null;
+  nextPage: number | null;
+}
+
 // Use the same cache as TagForm
 declare const apiCache: {
-  persons: any;
-  locations: any;
-  occasions: any;
-  imageTags: Map<string, any>;
+  persons: Record<string, Person>;
+  locations: Record<string, Location>;
+  occasions: Record<string, Occasion>;
+  imageTags: Map<string, ApiCacheData>;
 };
 
 export default function ExistingTags({ imageId, onTagRemove }: ExistingTagsProps) {
@@ -58,18 +71,16 @@ export default function ExistingTags({ imageId, onTagRemove }: ExistingTagsProps
   const { user } = useAuth();
   const [expandedContext, setExpandedContext] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchExistingTags();
-  }, [imageId]);
-
-  const fetchExistingTags = async () => {
+  const fetchExistingTags = useCallback(async () => {
     try {
       // Check cache first
       if (apiCache.imageTags.has(imageId)) {
         const cachedData = apiCache.imageTags.get(imageId);
-        setTags(cachedData.docs);
-        setIsLoading(false);
-        return;
+        if (cachedData) {
+          setTags(cachedData.docs);
+          setIsLoading(false);
+          return;
+        }
       }
 
       const response = await fetch(`/api/image-tags?where[mediaId][equals]=${imageId}&populate[personTags.personId]=true&populate[location]=true&populate[occasion]=true&populate[createdBy]=true`, {
@@ -91,7 +102,11 @@ export default function ExistingTags({ imageId, onTagRemove }: ExistingTagsProps
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [imageId]);
+
+  useEffect(() => {
+    fetchExistingTags();
+  }, [fetchExistingTags]);
 
   const handleRemoveTag = async (tagId: string) => {
     try {
@@ -107,8 +122,10 @@ export default function ExistingTags({ imageId, onTagRemove }: ExistingTagsProps
       // Remove from cache
       if (apiCache.imageTags.has(imageId)) {
         const cachedData = apiCache.imageTags.get(imageId);
-        cachedData.docs = cachedData.docs.filter((tag: any) => tag.id !== tagId);
-        apiCache.imageTags.set(imageId, cachedData);
+        if (cachedData) {
+          cachedData.docs = cachedData.docs.filter((tag: ExistingTag) => tag.id !== tagId);
+          apiCache.imageTags.set(imageId, cachedData);
+        }
       }
 
       onTagRemove(tagId);

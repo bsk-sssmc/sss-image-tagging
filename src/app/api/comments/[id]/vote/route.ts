@@ -1,13 +1,14 @@
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(
-  req: Request,
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = context.params
+    const { id } = await params
+    
     const payload = await getPayload({
       config: configPromise,
     })
@@ -34,8 +35,8 @@ export async function POST(
       )
     }
 
-    const body = await req.json()
-    const { voteType, previousVote, voteChange } = body // 'upvote' or 'downvote'
+    const body = await request.json()
+    const { voteType } = body // 'upvote' or 'downvote'
 
     if (!['upvote', 'downvote'].includes(voteType)) {
       return NextResponse.json(
@@ -80,4 +81,4 @@ export async function POST(
       { status: 500 }
     )
   }
-} 
+}

@@ -28,6 +28,11 @@ interface PinMenuPosition {
   transform: string;
 }
 
+interface CreatePersonData {
+  name: string;
+  shortDescription: string;
+}
+
 export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProps) {
   const [pins, setPins] = useState<Pin[]>([]);
   const [isPlacingPin, setIsPlacingPin] = useState(false);
@@ -273,7 +278,7 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
     }));
   };
 
-  const handleCreatePerson = async (data: any) => {
+  const handleCreatePerson = async (data: CreatePersonData) => {
     try {
       const response = await fetch('/api/persons', {
         method: 'POST',
@@ -312,10 +317,6 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
   if (!isOpen || !imageUrl) return null;
 
   const selectedPin = pins.find(pin => pin.id === selectedPinId);
-
-  const handleCloseButtonClick = () => {
-    handleCloseMenu();
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -522,10 +523,15 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
                   e.preventDefault();
                   e.stopPropagation();
                   const formData = new FormData(e.currentTarget);
-                  handleCreatePerson({
-                    name: formData.get('name'),
-                    shortDescription: formData.get('shortDescription')
-                  });
+                  const name = formData.get('name');
+                  const shortDescription = formData.get('shortDescription');
+                  
+                  if (typeof name === 'string' && typeof shortDescription === 'string') {
+                    handleCreatePerson({
+                      name,
+                      shortDescription
+                    });
+                  }
                 }}
                 onClick={e => e.stopPropagation()}
               >

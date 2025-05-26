@@ -6,6 +6,9 @@ import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
+import type { PayloadHandler } from 'payload'
+import type { Request, Response, NextFunction } from 'express'
+import type { PayloadRequest } from 'payload'
 
 import { s3Storage } from '@payloadcms/storage-s3';
 
@@ -41,6 +44,37 @@ export default buildConfig({
     url: process.env.DATABASE_URI || '',
   }),
   sharp,
+  endpoints: [
+    {
+      path: '/random-image',
+      method: 'get',
+      handler: async (req) => {
+        try {
+          const { docs } = await req.payload.find({
+            collection: 'images',
+            limit: 1000,
+          });
+
+          if (docs.length === 0) {
+            return Response.json({ error: 'No images found' }, { status: 404 });
+          }
+
+          const randomIndex = Math.floor(Math.random() * docs.length);
+          return Response.json(docs[randomIndex]);
+        } catch (error) {
+          console.error('Error fetching random image:', error);
+          return Response.json({ error: 'Internal server error' }, { status: 500 });
+        }
+      },
+    },
+    {
+      path: '/media-access',
+      method: 'post',
+      handler: async (req) => {
+        return Response.json({ access: true });
+      },
+    },
+  ],
   plugins: [
     payloadCloudPlugin(),
     s3Storage({
@@ -48,7 +82,7 @@ export default buildConfig({
         images: {
           disableLocalStorage: false,
           generateFileURL: ({ filename }: { filename: string }) => {
-            return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/${filename}`
+            return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET}/images/${filename}`
           },
           prefix: 'images/',
         },

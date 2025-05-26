@@ -97,7 +97,7 @@ export default function AuthForms() {
       }
     } catch (err) {
       console.error('Login error:', err)
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred during login')
     } finally {
       setIsLoading(false)
     }

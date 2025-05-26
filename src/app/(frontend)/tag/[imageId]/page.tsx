@@ -7,14 +7,43 @@ import TagForm from '../components/TagForm';
 import Comments from '../components/Comments';
 import VerifiedInfo from '../components/VerifiedInfo';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
 
-import '../styles.css';
+import '../../styles.css';
 
 interface Media {
   id: string;
   url: string;
   alt?: string;
+}
+
+// Updated to match the FormState type expected by TagForm
+interface FormState {
+  selectedPersons: Array<{
+    id: string;
+    name: string;
+  }>;
+  selectedLocation: {
+    id: string;
+    name: string;
+  } | null;
+  locationConfidence: string;
+  selectedOccasion: {
+    id: string;
+    name: string;
+  } | null;
+  occasionConfidence: string;
+  dateType: string;
+  dateValue: string;
+  dateConfidence: string;
+  context: string;
+  remarks: string;
+  pins: Array<{
+    id?: string;
+    personId?: string;
+    x: number;
+    y: number;
+    confidence?: string;
+  }>;
 }
 
 export default function TagPage({ params }: { params: Promise<{ imageId: string }> }) {
@@ -79,6 +108,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     setIsLoading(true);
     setError(null);
     try {
+      // Use PayloadCMS's default REST API route
       const response = await fetch(`/api/images/${id}`, {
         credentials: 'include',
       });
@@ -143,17 +173,97 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     fetchRandomImage(); // Fetch a new random image and update URL
   };
 
-  const handleFormSubmit = async (formData: any) => {
-    console.log('Tag form submitted with data:', formData);
-    
+  const handleFormSubmit = async (formData: FormState) => {
     try {
-      if (imageId) {
-        await fetchSpecificImage(imageId);
+      if (!imageId) {
+        throw new Error('No image ID provided');
       }
+
+      console.log('=== Form Data ===');
+      console.log(JSON.stringify(formData, null, 2));
+
+      // First, create a new tag in the Image Tags collection
+      const tagPayload = {
+        mediaId: imageId, // PayloadCMS will handle the relationship
+        whenType: formData.dateType || 'full_date', // Must be one of the valid options
+        whenValue: formData.dateValue || '',
+        whenValueConfidence: formData.dateConfidence || '3',
+        location: formData.selectedLocation?.id || null,
+        locationConfidence: formData.locationConfidence || '3',
+        occasion: formData.selectedOccasion?.id || null,
+        occasionConfidence: formData.occasionConfidence || '3',
+        context: formData.context || '',
+        remarks: formData.remarks || '',
+        status: 'Tagged',
+        personTags: formData.selectedPersons.map(person => ({
+          personId: person.id, // PayloadCMS will handle the relationship
+          confidence: formData.locationConfidence || '3',
+          coordinates: {
+            x: 50, // Default to center
+            y: 50  // Default to center
+          }
+        }))
+      };
+
+      console.log('=== Tag Payload ===');
+      console.log(JSON.stringify(tagPayload, null, 2));
+
+      // Create the tag using PayloadCMS's default REST API route
+      const tagResponse = await fetch('/api/image-tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(tagPayload)
+      });
+
+      if (!tagResponse.ok) {
+        const errorData = await tagResponse.json().catch(() => null);
+        console.error('Error creating tag:', errorData);
+        throw new Error(errorData?.message || 'Failed to create tag');
+      }
+
+      const createdTag = await tagResponse.json();
+      console.log('=== Created Tag ===');
+      console.log(JSON.stringify(createdTag, null, 2));
+
+      // Now update the image to reference this tag
+      const imageUpdatePayload = {
+        tags: [{
+          relationTo: 'image-tags',
+          value: createdTag.id
+        }]
+      };
+
+      console.log('=== Image Update Payload ===');
+      console.log(JSON.stringify(imageUpdatePayload, null, 2));
+
+      const imageResponse = await fetch(`/api/images/${imageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(imageUpdatePayload)
+      });
+
+      if (!imageResponse.ok) {
+        const errorData = await imageResponse.json().catch(() => null);
+        console.error('Error updating image:', errorData);
+        throw new Error(errorData?.message || 'Failed to update image');
+      }
+
+      const updatedImage = await imageResponse.json();
+      console.log('=== Updated Image ===');
+      console.log(JSON.stringify(updatedImage, null, 2));
+
+      // Refresh the image data to show the updated tags
+      await fetchSpecificImage(imageId);
       
-      console.log('Successfully processed tag submission');
     } catch (error) {
       console.error('Error processing tag submission:', error);
+      throw error;
     }
   };
 
@@ -245,7 +355,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
         <div className="right-column">
           <TagForm 
             onSubmit={handleFormSubmit} 
-            currentImageUrl={currentImage?.url}
+            _currentImageUrl={currentImage?.url}
             currentImageId={currentImage?.id}
           />
         </div>
@@ -271,4 +381,4 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
       />
     </div>
   );
-} 
+}

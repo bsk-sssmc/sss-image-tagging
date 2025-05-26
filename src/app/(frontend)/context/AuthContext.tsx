@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '../../../payload-types';
 
@@ -32,6 +32,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      // Clear all auth state first
+      setUser(null);
+      localStorage.removeItem('auth-state');
+      localStorage.removeItem('auth-timestamp');
+      
+      // Clear cookies
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'payload-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+      // Try to call logout endpoint, but don't fail if it errors
+      try {
+        const res = await fetch('/api/users/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        if (!res.ok) {
+          console.warn('Logout endpoint returned error:', res.status);
+        }
+      } catch (err) {
+        console.warn('Logout endpoint error:', err);
+      }
+
+      // Only redirect if not already on login page
+      if (!isLoginPage) {
+        router.push('/login');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Even if there's an error, clear local state and redirect
+      setUser(null);
+      localStorage.removeItem('auth-state');
+      localStorage.removeItem('auth-timestamp');
+      if (!isLoginPage) {
+        router.push('/login');
+      }
+    }
+  }, [isLoginPage, router]);
 
   // Simple auth check for protected pages
   useEffect(() => {
@@ -71,36 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isLoginPage && isMounted) {
       checkAuth();
     }
-  }, [isLoginPage, pathname, isMounted]);
-
-  const handleLogout = async () => {
-    try {
-      const res = await fetch('/api/users/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        throw new Error('Logout failed');
-      }
-
-      // Clear all auth state
-      setUser(null);
-      localStorage.removeItem('auth-state');
-      localStorage.removeItem('auth-timestamp');
-      
-      // Clear cookies
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'payload-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-
-      // Only redirect if not already on login page
-      if (!isLoginPage) {
-        router.push('/login');
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
+  }, [isLoginPage, pathname, isMounted, handleLogout]);
 
   // Prevent hydration mismatch by not rendering children until mounted
   if (!isMounted) {

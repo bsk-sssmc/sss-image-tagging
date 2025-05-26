@@ -57,6 +57,63 @@ export const Images: CollectionConfig = {
       name: 'alt',
       type: 'text',
     },
+    {
+      name: 'tags',
+      type: 'array',
+      fields: [
+        {
+          name: 'location',
+          type: 'text',
+        },
+        {
+          name: 'occasion',
+          type: 'text',
+        },
+        {
+          name: 'whenType',
+          type: 'text',
+        },
+        {
+          name: 'whenValue',
+          type: 'text',
+        },
+        {
+          name: 'context',
+          type: 'text',
+        },
+        {
+          name: 'personTags',
+          type: 'array',
+          fields: [
+            {
+              name: 'personId',
+              type: 'text',
+              required: true,
+            },
+            {
+              name: 'confidence',
+              type: 'text',
+            },
+            {
+              name: 'coordinates',
+              type: 'group',
+              fields: [
+                {
+                  name: 'x',
+                  type: 'number',
+                  required: true,
+                },
+                {
+                  name: 'y',
+                  type: 'number',
+                  required: true,
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
   ],
   admin: {
     useAsTitle: 'filename',

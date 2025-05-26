@@ -21,8 +21,6 @@ export const initPayload = async () => {
 
   if (!cached.promise) {
     cached.promise = payload.init({
-      secret: process.env.PAYLOAD_SECRET,
-      local: true,
       config,
       onInit: async (cms) => {
         cms.logger.info(`Admin URL: ${cms.getAdminURL()}`);
@@ -45,4 +43,4 @@ if (process.env.NODE_ENV !== 'production') {
   initPayload().catch((err) => {
     console.error('Error initializing Payload:', err);
   });
-} 
+}

@@ -9,7 +9,7 @@ const Navbar = () => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const isLoginPage = pathname === '/login';
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [_authError, _setAuthError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

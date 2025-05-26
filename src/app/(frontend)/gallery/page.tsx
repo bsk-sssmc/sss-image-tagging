@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,7 +25,7 @@ interface UniqueImage {
 
 export default function GalleryPage() {
   const searchParams = useSearchParams();
-  const albumId = searchParams.get('album');
+  const _albumId = searchParams.get('album');
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,8 +48,8 @@ export default function GalleryPage() {
   }, []);
 
   // Create a map of unique images
-  const uniqueImagesMap = albums.reduce((acc: Map<string, UniqueImage>, album) => {
-    album.images.forEach(image => {
+  const uniqueImagesMap = albums.reduce((acc: Map<string, UniqueImage>, album: Album) => {
+    album.images.forEach((image: { id: string; url: string }) => {
       if (!acc.has(image.url)) {
         acc.set(image.url, {
           id: image.id,
@@ -68,9 +68,9 @@ export default function GalleryPage() {
     return acc;
   }, new Map());
 
-  const uniqueImages = Array.from(uniqueImagesMap.values());
+  const uniqueImages = Array.from(uniqueImagesMap.values()) as UniqueImage[];
 
-  const filteredImages = uniqueImages.filter((image) => {
+  const filteredImages = uniqueImages.filter((image: UniqueImage) => {
     const matchesSearch = image.url.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAlbum = selectedAlbums.length === 0 || 
       image.albumIds.some((albumId: string) => selectedAlbums.includes(albumId));
@@ -90,7 +90,7 @@ export default function GalleryPage() {
             type="text"
             placeholder="Search images..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
             className="sidebar-input"
           />
         </div>
@@ -98,16 +98,16 @@ export default function GalleryPage() {
         <div className="sidebar-section">
           <h3>Albums</h3>
           <div className="album-filters">
-            {albums.map((album) => (
+            {albums.map((album: Album) => (
               <label key={album.id} className="album-filter">
                 <input
                   type="checkbox"
                   checked={selectedAlbums.includes(album.id)}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     if (e.target.checked) {
                       setSelectedAlbums([...selectedAlbums, album.id]);
                     } else {
-                      setSelectedAlbums(selectedAlbums.filter(id => id !== album.id));
+                      setSelectedAlbums(selectedAlbums.filter((id: string) => id !== album.id));
                     }
                   }}
                 />
@@ -123,15 +123,18 @@ export default function GalleryPage() {
         <h1 className="gallery-heading">Gallery</h1>
 
         <div className="gallery-grid">
-          {filteredImages.map((image) => (
+          {filteredImages.map((image: UniqueImage) => (
             <Link
               key={image.id}
               href={`/tag/${image.id}`}
               className="gallery-card"
             >
-              <img
+              <Image
                 src={image.url}
                 alt="Gallery image"
+                width={300}
+                height={300}
+                style={{ objectFit: 'cover' }}
                 loading="lazy"
               />
             </Link>
