@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, use, useRef } from 'react';
 import Image from 'next/image';
 import ImageModal from '../components/ImageModal';
 import TagForm from '../components/TagForm';
-import Comments from '../components/Comments';
 import VerifiedInfo from '../components/VerifiedInfo';
+import CommentSection from '../components/CommentSection';
 import { useRouter } from 'next/navigation';
+import { RefreshCcw } from 'lucide-react';
 
 import '../../styles.css';
 
@@ -53,9 +54,22 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSessionTimeout, setShowSessionTimeout] = useState(false);
+  const [verifiedTags, setVerifiedTags] = useState<Array<{
+    personTags?: Array<{
+      personId: {
+        id: string;
+        name: string;
+      };
+      coordinates?: {
+        x: number;
+        y: number;
+      };
+    }>;
+  }>>([]);
   const router = useRouter();
   const { imageId } = use(params);
   const hasInitialized = useRef(false);
+  const [persons, setPersons] = useState<{ id: string; name: string }[]>([]);
 
   // Check authentication and fetch image on mount
   useEffect(() => {
@@ -272,6 +286,39 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     router.push(`/login?from=${from}`);
   };
 
+  // Fetch verified tags when image changes
+  useEffect(() => {
+    const fetchVerifiedTags = async () => {
+      if (!imageId) return;
+      try {
+        const response = await fetch(
+          `/api/image-tags?where[mediaId][equals]=${imageId}&where[status][equals]=Verified&populate[personTags.personId]=true&populate[location]=true&populate[occasion]=true&sort=-createdAt`
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        setVerifiedTags(data.docs || []);
+      } catch (error) {
+        console.error('Error fetching verified tags:', error);
+        setVerifiedTags([]);
+      }
+    };
+    fetchVerifiedTags();
+  }, [imageId]);
+
+  // Fetch persons on mount
+  useEffect(() => {
+    const fetchPersons = async () => {
+      try {
+        const response = await fetch('/api/persons?limit=100');
+        const data = await response.json();
+        setPersons(data.docs);
+      } catch (error) {
+        console.error('Error fetching persons:', error);
+      }
+    };
+    fetchPersons();
+  }, []);
+
   if (error) {
     return (
       <div className="tag-container">
@@ -310,6 +357,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
             onContextMenu={(e) => e.preventDefault()}
             onDragStart={(e) => e.preventDefault()}
             onSelect={(e) => e.preventDefault()}
+            style={{ position: 'relative' }}
           >
             {isLoading ? (
               <div className="loading-overlay">
@@ -329,25 +377,33 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
                   draggable={false}
                   onContextMenu={(e) => e.preventDefault()}
                 />
+                <button
+                  onClick={handleRefresh}
+                  aria-label="Refresh image"
+                  style={{
+                    position: 'absolute',
+                    top: 16,
+                    right: 16,
+                    zIndex: 20,
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: 0,
+                    width: 'auto',
+                    height: 'auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: 'none',
+                    color: '#fff',
+                    transition: 'background 0.2s',
+                    padding: 0,
+                  }}
+                >
+                  <RefreshCcw size={28} color="#fff" />
+                </button>
               </div>
             ) : null}
-            <button
-              onClick={handleRefresh}
-              className="refresh-button"
-              aria-label="Refresh image"
-            >
-              <svg 
-                viewBox="0 0 24 24" 
-                width="24" 
-                height="24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2"
-              >
-                <path d="M23 4v6h-6M1 20v-6h6" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-            </button>
           </div>
         </div>
 
@@ -357,28 +413,35 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
             onSubmit={handleFormSubmit} 
             _currentImageUrl={currentImage?.url}
             currentImageId={currentImage?.id}
+            persons={persons}
+            setPersons={setPersons}
           />
         </div>
       </div>
 
       {/* Verified Information Section */}
       {currentImage?.id && (
-        <VerifiedInfo imageId={currentImage.id} />
-      )}
-
-      {/* Comments Section - Full Width */}
-      {currentImage?.id && (
-        <div className="comments-section-container">
-          <Comments imageId={currentImage.id} />
+        <div className="verified-info-section">
+          <div className="verified-info-container">
+            <VerifiedInfo imageId={currentImage.id} />
+          </div>
+          <div className="comments-container">
+            <CommentSection imageId={imageId} />
+          </div>
         </div>
       )}
 
       {/* Image Modal */}
-      <ImageModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        imageUrl={selectedImage}
-      />
+      {isModalOpen && selectedImage && (
+        <ImageModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          imageUrl={selectedImage}
+          verifiedTags={verifiedTags}
+          persons={persons}
+          setPersons={setPersons}
+        />
+      )}
     </div>
   );
 }

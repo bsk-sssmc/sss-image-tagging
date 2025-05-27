@@ -14,12 +14,27 @@ interface Pin {
   y: number;
   personId?: string;
   confidence?: string;
+  isVerified?: boolean;
 }
 
 interface ImageModalProps {
   isOpen: boolean;
   onClose: () => void;
   imageUrl: string | null;
+  verifiedTags?: Array<{
+    personTags?: Array<{
+      personId: {
+        id: string;
+        name: string;
+      };
+      coordinates?: {
+        x: number;
+        y: number;
+      };
+    }>;
+  }>;
+  persons: Person[];
+  setPersons: React.Dispatch<React.SetStateAction<Person[]>>;
 }
 
 interface PinMenuPosition {
@@ -33,11 +48,11 @@ interface CreatePersonData {
   shortDescription: string;
 }
 
-export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProps) {
-  const [pins, setPins] = useState<Pin[]>([]);
+export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [], persons, setPersons }: ImageModalProps) {
+  const [userPins, setUserPins] = useState<Pin[]>([]);
+  const [verifiedPins, setVerifiedPins] = useState<Pin[]>([]);
   const [isPlacingPin, setIsPlacingPin] = useState(false);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
-  const [persons, setPersons] = useState<Person[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingPersons, setIsLoadingPersons] = useState(false);
   const [isCreatePersonModalOpen, setIsCreatePersonModalOpen] = useState(false);
@@ -49,14 +64,28 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
     transform: 'translate(-50%, -100%)'
   });
 
+  // Convert verified tags to pins (run whenever verifiedTags changes)
+  useEffect(() => {
+    const pins = verifiedTags
+      .flatMap((tag) => tag.personTags || [])
+      .filter((tag) => tag.coordinates)
+      .map((tag) => ({
+        id: `verified-${tag.personId.id}`,
+        x: tag.coordinates!.x,
+        y: tag.coordinates!.y,
+        personId: tag.personId.id,
+        isVerified: true
+      }));
+    setVerifiedPins(pins);
+  }, [verifiedTags]);
+
   // Listen for openImageModal event
   useEffect(() => {
     const handleOpenImageModal = (event: CustomEvent) => {
       if (event.detail.pins) {
-        setPins(event.detail.pins);
+        setUserPins(event.detail.pins);
       }
     };
-
     window.addEventListener('openImageModal', handleOpenImageModal as EventListener);
     return () => {
       window.removeEventListener('openImageModal', handleOpenImageModal as EventListener);
@@ -67,9 +96,8 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
   useEffect(() => {
     const handlePinUpdate = (event: CustomEvent) => {
       const updatedPins = event.detail.pins;
-      setPins(updatedPins);
+      setUserPins(updatedPins);
     };
-
     window.addEventListener('pinUpdate', handlePinUpdate as EventListener);
     return () => {
       window.removeEventListener('pinUpdate', handlePinUpdate as EventListener);
@@ -107,13 +135,13 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
 
   const handleCloseMenu = useCallback(() => {
     if (selectedPinId) {
-      const selectedPin = pins.find(pin => pin.id === selectedPinId);
+      const selectedPin = userPins.find(pin => pin.id === selectedPinId);
       if (selectedPin && !selectedPin.personId) {
-        setPins(prevPins => prevPins.filter(pin => pin.id !== selectedPinId));
+        setUserPins(prevPins => prevPins.filter(pin => pin.id !== selectedPinId));
       }
     }
     setSelectedPinId(null);
-  }, [selectedPinId, pins]);
+  }, [selectedPinId, userPins]);
 
   // Update the click outside handler
   useEffect(() => {
@@ -148,22 +176,18 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPlacingPin || !imageContainerRef.current) return;
-
     const rect = imageContainerRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    // Only place pin if click is within image bounds
     if (x >= 0 && x <= 100 && y >= 0 && y <= 100) {
       const newPin: Pin = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         x,
         y
       };
-      setPins([...pins, newPin]);
+      setUserPins([...userPins, newPin]);
       setSelectedPinId(newPin.id);
       setIsPlacingPin(false);
-      // Calculate menu position for the new pin
       calculateMenuPosition(newPin);
     }
   };
@@ -245,20 +269,20 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
   };
 
   const handlePinClick = (pinId: string) => {
-    setSelectedPinId(pinId);
-    const pin = pins.find(p => p.id === pinId);
+    const pin = userPins.find((p: Pin) => p.id === pinId);
     if (pin) {
+      setSelectedPinId(pinId);
       calculateMenuPosition(pin);
     }
   };
 
   const handlePersonSelect = (personId: string, confidence: string = '3') => {
-    const updatedPins = pins.map(pin => 
+    const updatedPins = userPins.map((pin: Pin) => 
       pin.id === selectedPinId 
         ? { ...pin, personId, confidence } 
         : pin
     );
-    setPins(updatedPins);
+    setUserPins(updatedPins);
     setSelectedPinId(null);
     
     // Dispatch event to update pins in TagForm
@@ -268,8 +292,8 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
   };
 
   const handleDeletePin = () => {
-    const updatedPins = pins.filter(pin => pin.id !== selectedPinId);
-    setPins(updatedPins);
+    const updatedPins = userPins.filter((pin: Pin) => pin.id !== selectedPinId);
+    setUserPins(updatedPins);
     setSelectedPinId(null);
     
     // Dispatch event to update pins in TagForm
@@ -295,10 +319,9 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
 
       const responseData = await response.json();
       const newPerson = responseData.doc;
-      
-      setPersons(prev => [...prev, newPerson]);
+      setPersons([...persons, newPerson]);
       // Select the new person but keep the menu open
-      setPins(pins.map(pin => 
+      setUserPins(userPins.map(pin => 
         pin.id === selectedPinId 
           ? { ...pin, personId: newPerson.id } 
           : pin
@@ -316,7 +339,7 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
 
   if (!isOpen || !imageUrl) return null;
 
-  const selectedPin = pins.find(pin => pin.id === selectedPinId);
+  const selectedPin = userPins.find(pin => pin.id === selectedPinId);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -371,15 +394,27 @@ export default function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProp
             style={{ objectFit: 'contain' }}
             priority
           />
-          {pins.map(pin => (
+          {/* Render verified pins (blue, non-interactive) */}
+          {verifiedPins.map(pin => (
             <div
               key={pin.id}
-              className={`pin ${pin.id === selectedPinId ? 'selected' : ''}`}
-              style={{
-                left: `${pin.x}%`,
-                top: `${pin.y}%`
-              }}
-              onClick={(e) => {
+              className="pin verified-pin"
+              style={{ left: `${pin.x}%`, top: `${pin.y}%`, cursor: 'default' }}
+            >
+              {pin.personId && (
+                <div className="pin-tooltip">
+                  {persons.find(p => p.id === pin.personId)?.name}
+                </div>
+              )}
+            </div>
+          ))}
+          {/* Render user pins (red, interactive) */}
+          {userPins.map(pin => (
+            <div
+              key={pin.id}
+              className={`pin${pin.id === selectedPinId ? ' selected' : ''}`}
+              style={{ left: `${pin.x}%`, top: `${pin.y}%`, cursor: 'pointer' }}
+              onClick={e => {
                 e.stopPropagation();
                 handlePinClick(pin.id);
               }}

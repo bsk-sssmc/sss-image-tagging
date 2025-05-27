@@ -24,11 +24,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsMounted(true);
     // Initialize from localStorage only after mount
     const storedUser = localStorage.getItem('auth-state');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
+    const storedTimestamp = localStorage.getItem('auth-timestamp');
+    
+    // Check if stored data is still valid (less than 24 hours old)
+    if (storedUser && storedTimestamp) {
+      const timestamp = parseInt(storedTimestamp, 10);
+      const now = Date.now();
+      if (now - timestamp < 24 * 60 * 60 * 1000) { // 24 hours
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Failed to parse stored user:', e);
+          localStorage.removeItem('auth-state');
+          localStorage.removeItem('auth-timestamp');
+        }
+      } else {
+        // Clear expired data
+        localStorage.removeItem('auth-state');
+        localStorage.removeItem('auth-timestamp');
       }
     }
   }, []);
@@ -40,15 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('auth-state');
       localStorage.removeItem('auth-timestamp');
       
-      // Clear cookies
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'payload-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      // Clear cookies with proper domain and path
+      const domain = window.location.hostname;
+      document.cookie = `token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}; SameSite=Lax`;
+      document.cookie = `payload-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain}; SameSite=Lax`;
 
       // Try to call logout endpoint, but don't fail if it errors
       try {
         const res = await fetch('/api/users/logout', {
           method: 'POST',
           credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
         });
 
         if (!res.ok) {
@@ -83,14 +101,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await fetch('/api/users/me', {
           credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
         });
 
         if (res.ok) {
           const data = await res.json();
           if (data?.user) {
             setUser(data.user);
-            localStorage.setItem('auth-state', JSON.stringify(data.user));
-            localStorage.setItem('auth-timestamp', Date.now().toString());
+            // Only store in localStorage if we're not in production
+            if (process.env.NODE_ENV !== 'production') {
+              localStorage.setItem('auth-state', JSON.stringify(data.user));
+              localStorage.setItem('auth-timestamp', Date.now().toString());
+            }
           } else {
             // No user data, treat as unauthorized
             await handleLogout();

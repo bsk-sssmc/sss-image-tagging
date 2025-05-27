@@ -377,7 +377,6 @@ export interface Comment {
   image: string | Image;
   createdAt: string;
   commentUpvotes: number;
-  commentDownvotes: number;
   /**
    * The current user's vote on this comment
    */
@@ -651,7 +650,6 @@ export interface CommentsSelect<T extends boolean = true> {
   image?: T;
   createdAt?: T;
   commentUpvotes?: T;
-  commentDownvotes?: T;
   userVote?: T;
   parentComment?: T;
   depth?: T;

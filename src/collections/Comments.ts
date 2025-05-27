@@ -4,7 +4,7 @@ const Comments: CollectionConfig = {
   slug: 'comments',
   admin: {
     useAsTitle: 'commentText',
-    defaultColumns: ['commentText', 'commentBy', 'createdAt', 'commentUpvotes', 'commentDownvotes'],
+    defaultColumns: ['commentText', 'commentBy', 'createdAt', 'commentUpvotes'],
   },
   access: {
     read: () => true,
@@ -24,6 +24,19 @@ const Comments: CollectionConfig = {
       type: 'relationship',
       relationTo: 'users',
       required: true,
+      hooks: {
+        beforeChange: [
+          ({ value, operation, req }) => {
+            if (operation === 'create') {
+              if (!req.user) {
+                throw new Error('User must be authenticated to create a comment');
+              }
+              return req.user.id;
+            }
+            return value;
+          },
+        ],
+      },
     },
     {
       name: 'image',
@@ -51,13 +64,6 @@ const Comments: CollectionConfig = {
     },
     {
       name: 'commentUpvotes',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'commentDownvotes',
       type: 'number',
       required: true,
       defaultValue: 0,
@@ -93,6 +99,35 @@ const Comments: CollectionConfig = {
       },
     },
   ],
+  hooks: {
+    beforeChange: [
+      ({ data, req, operation }) => {
+        // Ensure user is authenticated for create operations
+        if (operation === 'create' && !req.user) {
+          throw new Error('User must be authenticated to create a comment');
+        }
+
+        // Set the commentBy field to the current user's ID
+        if (operation === 'create') {
+          data.commentBy = req.user.id;
+        }
+
+        // Set createdAt for new comments
+        if (operation === 'create') {
+          data.createdAt = new Date().toISOString();
+        }
+
+        // Calculate depth for replies
+        if (data.parentComment) {
+          data.depth = 1; // For direct replies
+        } else {
+          data.depth = 0; // For top-level comments
+        }
+
+        return data;
+      },
+    ],
+  },
   indexes: [
     {
       fields: ['parentComment'],

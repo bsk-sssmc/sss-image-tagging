@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
 
 const Navbar = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const isLoginPage = pathname === '/login';
   const [_authError, _setAuthError] = useState<string | null>(null);
@@ -33,6 +34,29 @@ const Navbar = () => {
     return name.charAt(0).toUpperCase();
   };
 
+  const handleTagClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/images/random', {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          const from = encodeURIComponent('/tag');
+          router.push(`/login?from=${from}`);
+          return;
+        }
+        throw new Error('Failed to fetch image');
+      }
+      
+      const data = await response.json();
+      router.push(`/tag/${data.id}`);
+    } catch (error) {
+      console.error('Error fetching random image:', error);
+    }
+  };
+
   return (
     <nav className="navbar">
       <div className="logo">
@@ -47,12 +71,13 @@ const Navbar = () => {
             >
               Home
             </Link>
-            <Link 
-              href="/tag" 
-              className={`nav-link ${pathname === '/tag' ? 'active' : ''}`}
+            <button 
+              type="button"
+              onClick={handleTagClick}
+              className={`nav-link ${pathname.startsWith('/tag') ? 'active' : ''}`}
             >
               Tag
-            </Link>
+            </button>
             <Link 
               href="/gallery" 
               className={`nav-link ${pathname === '/gallery' ? 'active' : ''}`}

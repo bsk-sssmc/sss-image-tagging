@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import NotificationPopup from '../../components/NotificationPopup';
 import CreateEntryModal from './CreateEntryModal';
@@ -33,6 +33,8 @@ interface TagFormProps {
   onSubmit: (formData: FormState) => void;
   _currentImageUrl?: string;
   currentImageId?: string;
+  persons: Person[];
+  setPersons: React.Dispatch<React.SetStateAction<Person[]>>;
 }
 
 interface FormState {
@@ -93,7 +95,7 @@ const apiCache = {
 
 const styles = ``;
 
-export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: TagFormProps) {
+export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, persons, setPersons }: TagFormProps) {
   const [selectedPersons, setSelectedPersons] = useState<Person[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [locationConfidence, setLocationConfidence] = useState('3');
@@ -109,7 +111,6 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
   const [remarks, setRemarks] = useState<string>('');
   const [pins, setPins] = useState<Pin[]>([]);
 
-  const [_persons, setPersons] = useState<Person[]>([]);
   const [_locations, setLocations] = useState<Location[]>([]);
   const [_occasions, setOccasions] = useState<Occasion[]>([]);
   const [isPersonsDropdownOpen, setIsPersonsDropdownOpen] = useState(false);
@@ -229,7 +230,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
       const responseData = await response.json();
       const newPerson = responseData.doc;
 
-      setPersons(prev => [...prev, newPerson]);
+      setPersons((prev: Person[]) => [...prev, newPerson]);
       _setIsCreatePersonModalOpen(false);
     } catch (error) {
       console.error('Error creating person:', error);
@@ -254,7 +255,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
       const responseData = await response.json();
       const newLocation = responseData.doc;
 
-      setLocations(prev => [...prev, newLocation]);
+      setLocations((prev: Location[]) => [...prev, newLocation]);
       _setIsCreateLocationModalOpen(false);
     } catch (error) {
       console.error('Error creating location:', error);
@@ -279,7 +280,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
       const responseData = await response.json();
       const newOccasion = responseData.doc;
 
-      setOccasions(prev => [...prev, newOccasion]);
+      setOccasions((prev: Occasion[]) => [...prev, newOccasion]);
       _setIsCreateOccasionModalOpen(false);
     } catch (error) {
       console.error('Error creating occasion:', error);
@@ -313,7 +314,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
     console.log('Current selectedPersons before removal:', selectedPersons);
     
     // Create a new array without the removed person
-    const newSelectedPersons = selectedPersons.filter(p => p.id !== personId);
+    const newSelectedPersons = selectedPersons.filter((p: Person) => p.id !== personId);
     console.log('Setting new selectedPersons after removal:', newSelectedPersons);
     
     // Update state directly
@@ -374,6 +375,12 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
       if (_personsDropdownRef.current && !_personsDropdownRef.current.contains(event.target as Node)) {
         setIsPersonsDropdownOpen(false);
       }
+      if (_locationDropdownRef.current && !_locationDropdownRef.current.contains(event.target as Node)) {
+        _setIsLocationsDropdownOpen(false);
+      }
+      if (_occasionDropdownRef.current && !_occasionDropdownRef.current.contains(event.target as Node)) {
+        _setIsOccasionsDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -382,66 +389,113 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
     };
   }, []);
 
+  // Helper to compare form state
+  const isFormChanged = useCallback(() => {
+    const currentState: FormState = {
+      selectedPersons,
+      selectedLocation,
+      locationConfidence,
+      selectedOccasion,
+      occasionConfidence,
+      dateType,
+      dateValue,
+      dateConfidence,
+      context,
+      remarks,
+      pins
+    };
+    return JSON.stringify(currentState) !== JSON.stringify(_initialFormState);
+  }, [selectedPersons, selectedLocation, locationConfidence, selectedOccasion, occasionConfidence, dateType, dateValue, dateConfidence, context, remarks, pins, _initialFormState]);
+
+  // Track changes
+  useEffect(() => {
+    _setHasChanges(isFormChanged());
+  }, [isFormChanged]);
+
+  // Set initial state when form loads or image changes
+  useEffect(() => {
+    const initialState: FormState = {
+      selectedPersons,
+      selectedLocation,
+      locationConfidence,
+      selectedOccasion,
+      occasionConfidence,
+      dateType,
+      dateValue,
+      dateConfidence,
+      context,
+      remarks,
+      pins
+    };
+    _setInitialFormState(initialState);
+  }, [currentImageId]);
+
+  // Add effect to listen for pin updates
+  useEffect(() => {
+    const handlePinUpdate = (event: CustomEvent<{ pins: Pin[] }>) => {
+      const updatedPins = event.detail.pins;
+      setPins(updatedPins);
+      
+      // Update selectedPersons based on pins with personId
+      const personsFromPins = updatedPins
+        .filter((pin: Pin) => pin.personId)
+        .map((pin: Pin) => ({
+          id: pin.personId!,
+          name: persons.find((p: Person) => p.id === pin.personId)?.name || ''
+        }))
+        .filter((person: { id: string; name: string }) => person.name); // Only include persons that were found in persons
+
+      // Update selectedPersons without duplicates
+      setSelectedPersons((prev: Person[]) => {
+        const existingIds = new Set(prev.map((p: Person) => p.id));
+        const newPersons = personsFromPins.filter((p: { id: string; name: string }) => !existingIds.has(p.id));
+        return [...prev, ...newPersons];
+      });
+    };
+
+    window.addEventListener('pinUpdate', handlePinUpdate as EventListener);
+    return () => {
+      window.removeEventListener('pinUpdate', handlePinUpdate as EventListener);
+    };
+  }, [persons]);
+
   return (
     <form className="tag-form" onSubmit={handleSubmit}>
+      {/* Heading row with Save button */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
+        <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: '#4a90e2' }}>Tag this image</h2>
+        {_hasChanges && (
+          <button
+            type="submit"
+            className="save-button visible"
+            style={{ marginLeft: 'auto' }}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Saving...' : 'Save Tag'}
+          </button>
+        )}
+      </div>
+
       <div className="form-group">
         <label>People <span className="required">*</span></label>
-        <div className="dropdown" ref={_personsDropdownRef}>
-          <input
-            type="text"
-            className="dropdown-input"
-            placeholder="Search people..."
-            value={searchTerm}
-            onChange={(e) => {
-              console.log('Search input changed:', e.target.value);
-              setSearchTerm(e.target.value);
-              setIsPersonsDropdownOpen(true);
-            }}
-            onFocus={() => {
-              console.log('Search input focused');
-              setIsPersonsDropdownOpen(true);
-            }}
-          />
-          {isPersonsDropdownOpen && (
-            <div className="dropdown-menu">
-              {_persons && _persons.length > 0 ? (
-                _persons
-                  .filter(person => 
-                    person.name.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((person) => (
-                    <div
-                      key={person.id}
-                      className="dropdown-item"
-                      style={{ cursor: 'pointer', padding: '8px' }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Person clicked:', person);
-                        handlePersonSelect(person);
-                      }}
-                    >
-                      {person.name}
-                    </div>
-                  ))
-              ) : (
-                <div className="dropdown-item">No persons found</div>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="tag-preview" style={{ marginTop: '8px' }}>
+        <div className="tag-preview" style={{ marginTop: '8px', display: selectedPersons && selectedPersons.length > 0 ? 'flex' : 'block', gap: '8px', flexWrap: 'wrap', background: 'none', boxShadow: 'none', padding: 0 }}>
           {selectedPersons && selectedPersons.length > 0 ? (
-            selectedPersons.map((person) => (
+            selectedPersons.map((person: Person) => (
               <span 
                 key={person.id} 
                 className="tag-preview"
                 style={{
-                  display: 'inline-block',
-                  margin: '4px',
-                  padding: '4px 8px',
-                  backgroundColor: '#e0e0e0',
-                  borderRadius: '4px'
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  margin: 0,
+                  padding: '4px 12px',
+                  backgroundColor: '#23262F',
+                  border: '1px solid #4a90e2',
+                  borderRadius: '8px',
+                  color: '#4a90e2',
+                  fontWeight: 500,
+                  fontSize: '1rem',
+                  boxShadow: 'none',
                 }}
               >
                 {person.name}
@@ -451,27 +505,30 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
                     marginLeft: '8px',
                     border: 'none',
                     background: 'none',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    color: '#4a90e2',
+                    fontSize: '1.1em',
                   }}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handlePersonRemove(person.id);
                   }}
+                  aria-label={`Remove ${person.name}`}
                 >
                   ×
                 </button>
               </span>
             ))
           ) : (
-            <div style={{ color: '#666' }}>No persons selected</div>
+            <div style={{ color: '#666', fontStyle: 'italic' }}>Click on the image to tag people in the image.</div>
           )}
         </div>
       </div>
 
       <div className="form-group">
         <label>Location</label>
-        <div className="dropdown">
+        <div className="dropdown" ref={_locationDropdownRef}>
           <input
             type="text"
             className="dropdown-input"
@@ -482,7 +539,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
           />
           {_isLocationsDropdownOpen && (
             <div className="dropdown-menu">
-              {_locations.map((location) => (
+              {_locations.map((location: Location) => (
                 <div
                   key={location.id}
                   className="dropdown-item"
@@ -495,33 +552,133 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
                   {location.name}
                 </div>
               ))}
+              <div className="dropdown-item add-new-item" style={{ borderTop: '1px solid #eee', marginTop: 8, paddingTop: 8 }}>
+                <button
+                  type="button"
+                  className="add-new-location-btn"
+                  style={{ width: '100%', background: 'none', border: 'none', color: '#4a90e2', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                  onClick={() => {
+                    _setIsCreateLocationModalOpen(true);
+                    _setIsLocationsDropdownOpen(false);
+                  }}
+                >
+                  + Add new location
+                </button>
+              </div>
             </div>
           )}
         </div>
+          <div className="tag-preview" style={{ marginTop: '8px', display: selectedPersons && selectedPersons.length > 0 ? 'flex' : 'block', gap: '8px', flexWrap: 'wrap', background: 'none', boxShadow: 'none', padding: 0 }}>
         {selectedLocation && (
-          <div className="tag-preview">
+          <span className="tag-preview" style={{ display: 'inline-flex', alignItems: 'center', margin: '8px 0 0 0', padding: '4px 12px', background: 'none', border: '1px solid #4a90e2', borderRadius: '8px', color: '#4a90e2', fontWeight: 500, fontSize: '1rem', boxShadow: 'none', width: 'auto', maxWidth: '100%' }}>
             {selectedLocation.name}
-            <button onClick={() => setSelectedLocation(null)}>×</button>
+            <button
+              type="button"
+              style={{
+                marginLeft: '8px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: '#4a90e2',
+                fontSize: '1.1em',
+              }}
+              onClick={() => setSelectedLocation(null)}
+              aria-label={`Remove ${selectedLocation.name}`}
+            >
+              ×
+            </button>
+          </span>
+        )}
+        </div>
+        {/* Location Confidence Meter - only show if a location is selected */}
+        {selectedLocation && (
+          <div className="confidence-rating">
+            <label>Confidence:</label>
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <button
+                key={rating}
+                type="button"
+                className={locationConfidence === rating.toString() ? 'active' : ''}
+                onClick={() => setLocationConfidence(rating.toString())}
+              >
+                {rating}
+              </button>
+            ))}
           </div>
         )}
-        <div className="confidence-rating">
-          <label>Confidence:</label>
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button
-              key={rating}
-              type="button"
-              className={locationConfidence === rating.toString() ? 'active' : ''}
-              onClick={() => setLocationConfidence(rating.toString())}
-            >
-              {rating}
-            </button>
-          ))}
-        </div>
       </div>
+
+      {/* Add CreateEntryModal for Location */}
+      <CreateEntryModal
+        isOpen={_isCreateLocationModalOpen}
+        onClose={() => _setIsCreateLocationModalOpen(false)}
+        title="Add New Location"
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'shortDescription', label: 'Short Description', type: 'textarea', required: true },
+          { name: 'city', label: 'City', type: 'text', required: true },
+          { name: 'state', label: 'State', type: 'select', required: true, options: [
+            'Andaman and Nicobar Islands',
+            'Andhra Pradesh',
+            'Arunachal Pradesh',
+            'Assam',
+            'Bihar',
+            'Chandigarh',
+            'Chhattisgarh',
+            'Dadra and Nagar Haveli',
+            'Daman and Diu',
+            'Delhi',
+            'Goa',
+            'Gujarat',
+            'Haryana',
+            'Himachal Pradesh',
+            'Jammu and Kashmir',
+            'Jharkhand',
+            'Karnataka',
+            'Kerala',
+            'Ladakh',
+            'Lakshadweep',
+            'Madhya Pradesh',
+            'Maharashtra',
+            'Manipur',
+            'Meghalaya',
+            'Mizoram',
+            'Nagaland',
+            'Odisha',
+            'Puducherry',
+            'Punjab',
+            'Rajasthan',
+            'Sikkim',
+            'Tamil Nadu',
+            'Telangana',
+            'Tripura',
+            'Uttar Pradesh',
+            'Uttarakhand',
+            'West Bengal',
+          ] },
+        ]}
+        onSubmit={async (data) => {
+          // POST to PayloadCMS default REST API
+          const response = await fetch('/api/locations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || 'Failed to create location');
+          }
+          const responseData = await response.json();
+          const newLocation = responseData.doc;
+          setLocations((prev: Location[]) => [...prev, newLocation]);
+          setSelectedLocation(newLocation);
+        }}
+      />
 
       <div className="form-group">
         <label>Occasion</label>
-        <div className="dropdown">
+        <div className="dropdown" ref={_occasionDropdownRef}>
           <input
             type="text"
             className="dropdown-input"
@@ -532,7 +689,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
           />
           {_isOccasionsDropdownOpen && (
             <div className="dropdown-menu">
-              {_occasions.map((occasion) => (
+              {_occasions.map((occasion: Occasion) => (
                 <div
                   key={occasion.id}
                   className="dropdown-item"
@@ -545,29 +702,89 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
                   {occasion.name}
                 </div>
               ))}
+              <div className="dropdown-item add-new-item" style={{ borderTop: '1px solid #eee', marginTop: 8, paddingTop: 8 }}>
+                <button
+                  type="button"
+                  className="add-new-occasion-btn"
+                  style={{ width: '100%', background: 'none', border: 'none', color: '#4a90e2', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                  onClick={() => {
+                    _setIsCreateOccasionModalOpen(true);
+                    _setIsOccasionsDropdownOpen(false);
+                  }}
+                >
+                  + Add new occasion
+                </button>
+              </div>
             </div>
           )}
         </div>
+        <div className="tag-preview" style={{ marginTop: '8px', display: selectedPersons && selectedPersons.length > 0 ? 'flex' : 'block', gap: '8px', flexWrap: 'wrap', background: 'none', boxShadow: 'none', padding: 0 }}>
         {selectedOccasion && (
-          <div className="tag-preview">
+          <span className="tag-preview" style={{ display: 'inline-flex', alignItems: 'center', margin: '8px 0 0 0', padding: '4px 12px', background: 'none', border: '1px solid #4a90e2', borderRadius: '8px', color: '#4a90e2', fontWeight: 500, fontSize: '1rem', boxShadow: 'none', width: 'auto', maxWidth: '100%' }}>
             {selectedOccasion.name}
-            <button onClick={() => setSelectedOccasion(null)}>×</button>
+            <button
+              type="button"
+              style={{
+                marginLeft: '8px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: '#4a90e2',
+                fontSize: '1.1em',
+              }}
+              onClick={() => setSelectedOccasion(null)}
+              aria-label={`Remove ${selectedOccasion.name}`}
+            >
+              ×
+            </button>
+          </span>
+        )}
+        </div>
+        {/* Occasion Confidence Meter - only show if an occasion is selected */}
+        {selectedOccasion && (
+          <div className="confidence-rating">
+            <label>Confidence:</label>
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <button
+                key={rating}
+                type="button"
+                className={occasionConfidence === rating.toString() ? 'active' : ''}
+                onClick={() => setOccasionConfidence(rating.toString())}
+              >
+                {rating}
+              </button>
+            ))}
           </div>
         )}
-        <div className="confidence-rating">
-          <label>Confidence:</label>
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button
-              key={rating}
-              type="button"
-              className={occasionConfidence === rating.toString() ? 'active' : ''}
-              onClick={() => setOccasionConfidence(rating.toString())}
-            >
-              {rating}
-            </button>
-          ))}
-        </div>
       </div>
+
+      {/* Add CreateEntryModal for Occasion */}
+      <CreateEntryModal
+        isOpen={_isCreateOccasionModalOpen}
+        onClose={() => _setIsCreateOccasionModalOpen(false)}
+        title="Add New Occasion"
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'shortDescription', label: 'Short Description', type: 'textarea', required: false },
+        ]}
+        onSubmit={async (data) => {
+          // POST to PayloadCMS default REST API
+          const response = await fetch('/api/occasions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || 'Failed to create occasion');
+          }
+          const responseData = await response.json();
+          const newOccasion = responseData.doc;
+          setOccasions((prev: Occasion[]) => [...prev, newOccasion]);
+          setSelectedOccasion(newOccasion);
+        }}
+      />
 
       <div className="form-group">
         <label>Date</label>
@@ -591,19 +808,22 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
             onChange={(e) => setDateValue(e.target.value)}
           />
         )}
-        <div className="confidence-rating">
-          <label>Confidence:</label>
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button
-              key={rating}
-              type="button"
-              className={dateConfidence === rating.toString() ? 'active' : ''}
-              onClick={() => setDateConfidence(rating.toString())}
-            >
-              {rating}
-            </button>
-          ))}
-        </div>
+        {/* Date Confidence Meter - only show if a date type is selected */}
+        {dateType && (
+          <div className="confidence-rating">
+            <label>Confidence:</label>
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <button
+                key={rating}
+                type="button"
+                className={dateConfidence === rating.toString() ? 'active' : ''}
+                onClick={() => setDateConfidence(rating.toString())}
+              >
+                {rating}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="form-group">
@@ -627,14 +847,6 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId }: 
           rows={4}
         />
       </div>
-
-      <button
-        type="submit"
-        className="submit-button"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'Submitting...' : 'Submit Tag'}
-      </button>
 
       {showNotification && (
         <NotificationPopup

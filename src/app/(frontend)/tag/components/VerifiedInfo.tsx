@@ -88,17 +88,28 @@ export default function VerifiedInfo({ imageId }: VerifiedInfoProps) {
         <span className="verified-info-title">Verified Information</span>
         <button
           className={`verified-info-chevron-btn${isDisabled ? ' disabled' : ''}`}
+          style={{ padding: '0.2rem 0.7rem', fontSize: '1.1rem', borderRadius: '6px', minWidth: 0, minHeight: 0 }}
           onClick={handleHeaderClick}
           tabIndex={0}
           aria-disabled={isDisabled}
           aria-expanded={isExpanded}
           type="button"
         >
-          <span className={`chevron-icon-card${isExpanded ? ' expanded' : ''}`} aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
+          {isExpanded ? (
+            <span className="chevron-icon-card" aria-hidden="true">
+              {/* Up chevron */}
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 12L10 8L14 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          ) : (
+            <span className="chevron-icon-card" aria-hidden="true">
+              {/* Down chevron */}
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          )}
         </button>
       </div>
       {isExpanded && (
