@@ -103,17 +103,12 @@ const Comments: CollectionConfig = {
     beforeChange: [
       ({ data, req, operation }) => {
         // Ensure user is authenticated for create operations
-        if (operation === 'create' && !req.user) {
-          throw new Error('User must be authenticated to create a comment');
-        }
-
-        // Set the commentBy field to the current user's ID
         if (operation === 'create') {
+          if (!req.user) {
+            throw new Error('User must be authenticated to create a comment');
+          }
+          // Now TypeScript knows req.user is not null
           data.commentBy = req.user.id;
-        }
-
-        // Set createdAt for new comments
-        if (operation === 'create') {
           data.createdAt = new Date().toISOString();
         }
 

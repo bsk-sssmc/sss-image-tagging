@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThumbsUp, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
+import type { Comment as PayloadComment, User } from '../../../payload-types';
+
+interface Comment extends PayloadComment {
+  commentBy: User;
+}
+
+interface CommentWithChildren extends Comment {
+  children: CommentWithChildren[];
+}
 
 const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
   const [comments, setComments] = useState<Comment[]>([]);
@@ -10,26 +19,83 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  const renderAvatar = (comment: Comment) => {
-    if (comment.commentBy.avatar) {
-      return (
-        <Image
-          src={comment.commentBy.avatar}
-          alt={comment.commentBy.displayName}
-          width={32}
-          height={32}
-          className="comment-avatar-img"
-        />
-      );
-    } else {
-      // Render blue circle with initial
-      const initial = comment.commentBy.displayName?.[0]?.toUpperCase() || '?';
-      return (
-        <span className="comment-avatar-initial" title={comment.commentBy.displayName}>
-          {initial}
-        </span>
-      );
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`/api/comments?where[image][equals]=${imageId}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch comments');
+      const data = await response.json();
+      setComments(data.docs);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
     }
+  };
+
+  useEffect(() => {
+    fetchComments();
+  }, [imageId]);
+
+  const handleSubmitComment = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!newComment.trim()) return;
+
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/comments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            commentText: newComment.trim(),
+            image: imageId,
+          }),
+        });
+
+        if (!response.ok) throw new Error('Failed to post comment');
+        
+        setNewComment('');
+        fetchComments();
+      } catch (error) {
+        console.error('Error posting comment:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleUpvote = async (commentId: string, currentVote?: 'upvote' | 'downvote' | null) => {
+    try {
+      const newVote = currentVote === 'upvote' ? undefined : 'upvote';
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          userVote: newVote,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update vote');
+      fetchComments();
+    } catch (error) {
+      console.error('Error updating vote:', error);
+    }
+  };
+
+  const renderAvatar = (comment: Comment) => {
+    // Since User type doesn't have avatar, we'll always show initials
+    const initial = comment.commentBy.displayName?.[0]?.toUpperCase() || '?';
+    return (
+      <span className="comment-avatar-initial" title={comment.commentBy.displayName}>
+        {initial}
+      </span>
+    );
   };
 
   const handleReply = (commentId: string) => {
@@ -54,7 +120,10 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
           body: JSON.stringify({
             commentText: replyText.trim(),
             image: imageId,
-            parentComment: parentId,
+            parentComment: {
+              relationTo: 'comments',
+              value: parentId
+            },
             depth: depth + 1,
           }),
         });
@@ -123,9 +192,9 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
   };
 
   // Helper to build a tree and flatten it in the desired order
-  function buildCommentTree(comments: Comment[]) {
-    const map = new Map<string, (Comment & { children: Comment[] })>();
-    const roots: (Comment & { children: Comment[] })[] = [];
+  function buildCommentTree(comments: Comment[]): (Comment & { depth: number })[] {
+    const map = new Map<string, CommentWithChildren>();
+    const roots: CommentWithChildren[] = [];
 
     // Initialize map
     comments.forEach(comment => {
@@ -134,8 +203,8 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
 
     // Build tree
     map.forEach(comment => {
-      if (comment.parentComment) {
-        const parent = map.get(comment.parentComment);
+      if (comment.parentComment?.value) {
+        const parent = map.get(comment.parentComment.value as string);
         if (parent) {
           parent.children.push(comment);
         } else {
@@ -147,7 +216,7 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
     });
 
     // Sort children by createdAt ascending
-    function sortTree(nodes: (Comment & { children: Comment[] })[]) {
+    function sortTree(nodes: CommentWithChildren[]) {
       nodes.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       nodes.forEach(node => sortTree(node.children));
     }
@@ -155,7 +224,7 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
 
     // Flatten tree with depth
     const result: (Comment & { depth: number })[] = [];
-    function flatten(nodes: (Comment & { children: Comment[] })[], depth: number) {
+    function flatten(nodes: CommentWithChildren[], depth: number) {
       for (const node of nodes) {
         result.push({ ...node, depth });
         flatten(node.children, depth + 1);

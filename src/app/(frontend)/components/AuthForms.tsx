@@ -200,7 +200,11 @@ export default function AuthForms() {
 
   return (
     <div className="auth-container">
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className={error === 'Registration successful! Please login.' ? 'success-message' : 'error-message'}>
+          {error}
+        </div>
+      )}
       
       {/* Login Form */}
       <form className="auth-form" style={{ display: showRegister ? 'none' : 'block', position: 'relative' }} onSubmit={handleLogin}>
