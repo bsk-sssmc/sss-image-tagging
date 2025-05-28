@@ -3,36 +3,57 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
+import { useEffect, useState, useRef } from 'react';
 
 const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, setUser } = useAuth();
+  const { user, logout } = useAuth();
+  const isLoginPage = pathname === '/login';
+  const [_authError, _setAuthError] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleLogout = async () => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Don't render the navbar on the login page
+  if (isLoginPage) {
+    return null;
+  }
+
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
+  const handleTagClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
     try {
-      const res = await fetch('/api/users/logout', {
-        method: 'POST',
+      const response = await fetch('/api/images/random', {
         credentials: 'include',
       });
-
-      if (!res.ok) {
-        throw new Error('Logout failed');
-      }
-
-      // Clear auth state and localStorage
-      setUser(null);
-      localStorage.removeItem('auth-state');
       
-      // Dispatch storage event to notify other tabs
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'auth-state',
-        newValue: null
-      }));
-
-      router.push('/login');
-    } catch (err) {
-      console.error('Logout error:', err);
+      if (!response.ok) {
+        if (response.status === 401) {
+          const from = encodeURIComponent('/tag');
+          router.push(`/login?from=${from}`);
+          return;
+        }
+        throw new Error('Failed to fetch image');
+      }
+      
+      const data = await response.json();
+      router.push(`/tag/${data.id}`);
+    } catch (error) {
+      console.error('Error fetching random image:', error);
     }
   };
 
@@ -41,34 +62,72 @@ const Navbar = () => {
       <div className="logo">
         <Link href="/">SSS Image Tagging</Link>
       </div>
-      {user && (
-        <div className="nav-links">
-          <Link 
-            href="/" 
-            className={`nav-link ${pathname === '/' ? 'active' : ''}`}
-          >
-            Home
-          </Link>
-          <Link 
-            href="/tag" 
-            className={`nav-link ${pathname === '/tag' ? 'active' : ''}`}
-          >
-            Tag
-          </Link>
-          <Link 
-            href="/gallery" 
-            className={`nav-link ${pathname === '/gallery' ? 'active' : ''}`}
-          >
-            Gallery
-          </Link>
-          <button 
-            onClick={handleLogout} 
-            className="logout-button"
-          >
-            Logout
-          </button>
-        </div>
-      )}
+      <div className="nav-links">
+        {user ? (
+          <>
+            <Link 
+              href="/" 
+              className={`nav-link ${pathname === '/' ? 'active' : ''}`}
+            >
+              Home
+            </Link>
+            <button 
+              type="button"
+              onClick={handleTagClick}
+              className={`nav-link ${pathname.startsWith('/tag') ? 'active' : ''}`}
+            >
+              Tag
+            </button>
+            <Link 
+              href="/gallery" 
+              className={`nav-link ${pathname === '/gallery' ? 'active' : ''}`}
+            >
+              Gallery
+            </Link>
+            {user.role === 'admin' && (
+              <Link 
+                href="/dashboard" 
+                className={`nav-link ${pathname === '/dashboard' ? 'active' : ''}`}
+              >
+                Dashboard
+              </Link>
+            )}
+            <div className="avatar-container" ref={dropdownRef}>
+              <button 
+                className="avatar-button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              >
+                {getInitials(user.displayName || user.email)}
+              </button>
+              {isDropdownOpen && (
+                <div className="avatar-dropdown">
+                  <div className="dropdown-user-info">
+                    {user.displayName || user.email}
+                  </div>
+                  <button 
+                    onClick={logout} 
+                    className="dropdown-logout-button"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="auth-error">
+              Your session has expired. Please log in again.
+            </div>
+            <button 
+              onClick={() => window.location.href = '/login'} 
+              className="login-button"
+            >
+              Login
+            </button>
+          </>
+        )}
+      </div>
     </nav>
   );
 };

@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types';
+import { CollectionConfig } from 'payload';
 
 const ImageTags: CollectionConfig = {
   slug: 'image-tags',
@@ -7,14 +7,23 @@ const ImageTags: CollectionConfig = {
   },
   access: {
     read: () => true,
+    create: () => true,
+    update: () => true,
+    delete: () => true,
   },
   fields: [
     {
       name: 'whenType',
       type: 'select',
       label: 'When Type',
-      description: 'Type of date information',
+      admin: {
+        description: 'Type of date information'
+      },
       options: [
+        {
+          label: 'Select an option',
+          value: '',
+        },
         {
           label: 'Full Date',
           value: 'full_date',
@@ -32,20 +41,23 @@ const ImageTags: CollectionConfig = {
           value: 'month_year',
         },
       ],
-      required: true,
+      defaultValue: '',
     },
     {
       name: 'whenValue',
       type: 'text',
       label: 'When Value',
-      description: 'Value received from frontend form',
-      required: true,
+      admin: {
+        description: 'Value received from frontend form'
+      },
     },
     {
       name: 'whenValueConfidence',
       type: 'select',
       label: 'When Value Confidence',
-      description: 'How confident are you about this date?',
+      admin: {
+        description: 'How confident are you about this date?'
+      },
       options: [
         { label: '1 - Not confident', value: '1' },
         { label: '2 - Somewhat confident', value: '2' },
@@ -58,31 +70,107 @@ const ImageTags: CollectionConfig = {
     {
       name: 'mediaId',
       type: 'relationship',
-      relationTo: 'media',
+      relationTo: 'images',
       required: true,
       label: 'Media',
-      description: 'The picture this tag belongs to',
+      admin: {
+        description: 'The picture this tag belongs to'
+      },
     },
     {
-      name: 'persons',
-      type: 'relationship',
-      relationTo: 'persons',
-      hasMany: true,
-      label: 'Persons',
-      description: 'People present in the picture',
+      name: 'personTags',
+      type: 'array',
+      label: 'Person Tags',
+      admin: {
+        description: 'Detailed information about people in the picture'
+      },
+      fields: [
+        {
+          name: 'personId',
+          type: 'relationship',
+          relationTo: 'persons',
+          required: true,
+          label: 'Person',
+        },
+        {
+          name: 'confidence',
+          type: 'select',
+          label: 'Confidence Level',
+          options: [
+            { label: '1 - Not confident', value: '1' },
+            { label: '2 - Somewhat confident', value: '2' },
+            { label: '3 - Moderately confident', value: '3' },
+            { label: '4 - Very confident', value: '4' },
+            { label: '5 - Extremely confident', value: '5' },
+          ],
+          defaultValue: '3',
+        },
+        {
+          name: 'coordinates',
+          type: 'group',
+          fields: [
+            {
+              name: 'x',
+              type: 'number',
+              required: true,
+              min: 0,
+              max: 100,
+              admin: {
+                step: 1,
+              },
+            },
+            {
+              name: 'y',
+              type: 'number',
+              required: true,
+              min: 0,
+              max: 100,
+              admin: {
+                step: 1,
+              },
+            }
+          ],
+        },
+        {
+          name: 'createdBy',
+          type: 'relationship',
+          relationTo: 'users',
+          required: true,
+          admin: {
+            readOnly: true,
+          },
+          hooks: {
+            beforeChange: [
+              ({ value, operation, req }) => {
+                if (operation === 'create') {
+                  if (!req.user) {
+                    throw new Error('User must be authenticated to create a person tag');
+                  }
+                  return req.user.id;
+                }
+                return value;
+              },
+            ],
+          },
+        },
+      ],
     },
     {
       name: 'location',
       type: 'relationship',
       relationTo: 'locations',
       label: 'Location',
-      description: 'Location where the picture was taken',
+      admin: {
+        description: 'Location where the picture was taken'
+      },
     },
     {
       name: 'locationConfidence',
       type: 'select',
       label: 'Location Confidence',
-      description: 'How confident are you about this location?',
+      admin: {
+        description: 'How confident are you about this location?'
+      },
       options: [
         { label: '1 - Not confident', value: '1' },
         { label: '2 - Somewhat confident', value: '2' },
@@ -97,13 +185,17 @@ const ImageTags: CollectionConfig = {
       type: 'relationship',
       relationTo: 'occasions',
       label: 'Occasion',
-      description: 'Occasion of the picture',
+      admin: {
+        description: 'Occasion of the picture'
+      },
     },
     {
       name: 'occasionConfidence',
       type: 'select',
       label: 'Occasion Confidence',
-      description: 'How confident are you about this occasion?',
+      admin: {
+        description: 'How confident are you about this occasion?'
+      },
       options: [
         { label: '1 - Not confident', value: '1' },
         { label: '2 - Somewhat confident', value: '2' },
@@ -117,13 +209,32 @@ const ImageTags: CollectionConfig = {
       name: 'context',
       type: 'textarea',
       label: 'Context',
-      description: 'Any incident or information about the context of the picture',
+      admin: {
+        description: 'Any incident or information about the context of the picture'
+      },
     },
     {
       name: 'remarks',
       type: 'textarea',
       label: 'Remarks',
-      description: 'Any additional remarks about the picture',
+      admin: {
+        description: 'Any additional remarks about the picture'
+      },
+    },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      required: true,
+      defaultValue: 'Tagged',
+      options: [
+        { label: 'Not Verified', value: 'Not Verified' },
+        { label: 'Tagged', value: 'Tagged' },
+        { label: 'Verified', value: 'Verified' },
+      ],
+      admin: {
+        description: 'Indicates whether the tag is not verified, just tagged, or has been verified by an admin.'
+      }
     },
     {
       name: 'createdBy',
@@ -132,6 +243,19 @@ const ImageTags: CollectionConfig = {
       required: true,
       admin: {
         readOnly: true,
+      },
+      hooks: {
+        beforeChange: [
+          ({ value, operation, req }) => {
+            if (operation === 'create') {
+              if (!req.user) {
+                throw new Error('User must be authenticated to create an image tag');
+              }
+              return req.user.id;
+            }
+            return value;
+          },
+        ],
       },
     },
   ],

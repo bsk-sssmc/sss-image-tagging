@@ -9,8 +9,9 @@ export default function AuthForms() {
   const [error, setError] = useState('')
   const [showDisplayNameForm, setShowDisplayNameForm] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { setUser, checkAuth } = useAuth()
+  const { setUser } = useAuth()
 
   useEffect(() => {
     // Check if user needs to set display name
@@ -41,6 +42,7 @@ export default function AuthForms() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setIsLoading(true)
     
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
@@ -79,17 +81,25 @@ export default function AuthForms() {
         if (!data.user.displayName) {
           setShowDisplayNameForm(true)
         } else {
-          // Update auth context and redirect to the original destination
-          await checkAuth()
-          console.log('Redirecting to:', data.redirectTo || '/')
-          router.push(data.redirectTo || '/')
+          // Update auth context and redirect
+          setUser(data.user)
+          localStorage.setItem('auth-state', JSON.stringify(data.user))
+          localStorage.setItem('auth-timestamp', Date.now().toString())
+          
+          const targetPath = data.redirectTo || '/'
+          if (window.location.pathname !== targetPath) {
+            console.log('Redirecting to:', targetPath)
+            router.push(targetPath)
+          }
         }
       } else {
         throw new Error('User data not found in response')
       }
     } catch (err) {
       console.error('Login error:', err)
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred during login')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -163,7 +173,10 @@ export default function AuthForms() {
 
       setShowDisplayNameForm(false)
       // Update auth context and redirect to home page
-      await checkAuth()
+      const userData = await res.json()
+      setUser(userData.user)
+      localStorage.setItem('auth-state', JSON.stringify(userData.user))
+      localStorage.setItem('auth-timestamp', Date.now().toString())
       router.push('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update display name')
@@ -187,21 +200,32 @@ export default function AuthForms() {
 
   return (
     <div className="auth-container">
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className={error === 'Registration successful! Please login.' ? 'success-message' : 'error-message'}>
+          {error}
+        </div>
+      )}
       
       {/* Login Form */}
-      <form className="auth-form" style={{ display: showRegister ? 'none' : 'block' }} onSubmit={handleLogin}>
+      <form className="auth-form" style={{ display: showRegister ? 'none' : 'block', position: 'relative' }} onSubmit={handleLogin}>
         <h2>Login</h2>
         <div className="form-group">
-          <input type="email" name="email" placeholder="Email" required />
+          <input type="email" name="email" placeholder="Email" required disabled={isLoading} />
         </div>
         <div className="form-group">
-          <input type="password" name="password" placeholder="Password" required />
+          <input type="password" name="password" placeholder="Password" required disabled={isLoading} />
         </div>
-        <button type="submit" className="auth-button">Login</button>
+        <button type="submit" className="auth-button" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
         <p className="switch-form">
           New user? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(true) }}>Register here</a>
         </p>
+        {isLoading && (
+          <div className="loading-overlay">
+            <div className="loading-spinner" />
+          </div>
+        )}
       </form>
 
       {/* Registration Form */}

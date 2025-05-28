@@ -5,6 +5,35 @@ export const Media: CollectionConfig = {
   slug: 'media',
   access: {
     read: () => true,
+    create: () => true,
+    update: () => true,
+    delete: () => true,
+  },
+  upload: {
+    // disableLocalStorage: true,
+    adminThumbnail: 'thumbnail',
+    mimeTypes: ['image/*'],
+    imageSizes: [
+      {
+        name: 'thumbnail',
+        width: 400,
+        height: 300,
+        position: 'centre',
+      },
+      {
+        name: 'card',
+        width: 768,
+        height: 1024,
+        position: 'centre',
+      },
+    ],
+    formatOptions: {
+      format: 'webp',
+      options: {
+        effort: 6,
+      },
+    },
+    staticDir: 'media',
   },
   fields: [
     {
@@ -27,29 +56,20 @@ export const Media: CollectionConfig = {
       },
     },
     {
-      name: 'uploadedBy',
-      type: 'relationship',
-      relationTo: 'users',
-      required: true,
-      admin: {
-        readOnly: true,
-        position: 'sidebar',
-      },
-      hooks: {
-        beforeChange: [
-          ({ value, operation, req }) => {
-            if (operation === 'create') {
-              return req.user?.id || null
-            }
-            return value
-          },
-        ],
-      },
-    },
-    {
       name: 'alt',
       type: 'text',
     },
   ],
-  upload: true,
+  admin: {
+    useAsTitle: 'filename',
+    defaultColumns: ['filename', 'alt', 'createdAt'],
+    group: 'Media',
+    enableRichTextRelationship: true,
+    enableRichTextLink: true,
+    description: 'Upload and manage media files',
+    listSearchableFields: ['filename', 'alt'],
+    pagination: {
+      defaultLimit: 50,
+    },
+  },
 }

@@ -68,12 +68,13 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
-    media: Media;
+    images: Image;
     occasions: Occasion;
     locations: Location;
     persons: Person;
     'image-tags': ImageTag;
     albums: Album;
+    comments: Comment;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -81,12 +82,13 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
+    images: ImagesSelect<false> | ImagesSelect<true>;
     occasions: OccasionsSelect<false> | OccasionsSelect<true>;
     locations: LocationsSelect<false> | LocationsSelect<true>;
     persons: PersonsSelect<false> | PersonsSelect<true>;
     'image-tags': ImageTagsSelect<false> | ImageTagsSelect<true>;
     albums: AlbumsSelect<false> | AlbumsSelect<true>;
+    comments: CommentsSelect<false> | CommentsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -130,6 +132,10 @@ export interface UserAuthOperations {
 export interface User {
   id: string;
   displayName: string;
+  /**
+   * User role determines access level
+   */
+  role: 'user' | 'admin';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -142,14 +148,37 @@ export interface User {
   password?: string | null;
 }
 /**
+ * Upload and manage media files
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
+ * via the `definition` "images".
  */
-export interface Media {
+export interface Image {
   id: string;
   mediaId: string;
-  uploadedBy: string | User;
   alt?: string | null;
+  tags?:
+    | {
+        location?: string | null;
+        occasion?: string | null;
+        whenType?: string | null;
+        whenValue?: string | null;
+        context?: string | null;
+        personTags?:
+          | {
+              personId: string;
+              confidence?: string | null;
+              coordinates: {
+                x: number;
+                y: number;
+              };
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -161,6 +190,24 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -243,17 +290,65 @@ export interface Person {
  */
 export interface ImageTag {
   id: string;
-  whenType: 'full_date' | 'decades' | 'year' | 'month_year';
-  whenValue: string;
+  /**
+   * Type of date information
+   */
+  whenType?: ('' | 'full_date' | 'decades' | 'year' | 'month_year') | null;
+  /**
+   * Value received from frontend form
+   */
+  whenValue?: string | null;
+  /**
+   * How confident are you about this date?
+   */
   whenValueConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
-  mediaId: string | Media;
-  persons?: (string | Person)[] | null;
+  /**
+   * The picture this tag belongs to
+   */
+  mediaId: string | Image;
+  /**
+   * Detailed information about people in the picture
+   */
+  personTags?:
+    | {
+        personId: string | Person;
+        confidence?: ('1' | '2' | '3' | '4' | '5') | null;
+        coordinates: {
+          x: number;
+          y: number;
+        };
+        createdBy: string | User;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Location where the picture was taken
+   */
   location?: (string | null) | Location;
+  /**
+   * How confident are you about this location?
+   */
   locationConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
+  /**
+   * Occasion of the picture
+   */
   occasion?: (string | null) | Occasion;
+  /**
+   * How confident are you about this occasion?
+   */
   occasionConfidence?: ('1' | '2' | '3' | '4' | '5') | null;
+  /**
+   * Any incident or information about the context of the picture
+   */
   context?: string | null;
+  /**
+   * Any additional remarks about the picture
+   */
   remarks?: string | null;
+  /**
+   * Indicates whether the tag is not verified, just tagged, or has been verified by an admin.
+   */
+  status: 'Not Verified' | 'Tagged' | 'Verified';
   createdBy: string | User;
   updatedAt: string;
   createdAt: string;
@@ -267,9 +362,37 @@ export interface Album {
   name: string;
   slug?: string | null;
   shortDescription?: string | null;
-  images: (string | Media)[];
+  images: (string | Image)[];
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments".
+ */
+export interface Comment {
+  id: string;
+  commentText: string;
+  commentBy: string | User;
+  image: string | Image;
+  createdAt: string;
+  commentUpvotes: number;
+  /**
+   * The current user's vote on this comment
+   */
+  userVote?: ('upvote' | 'downvote') | null;
+  /**
+   * If this is a reply, link to the parent comment
+   */
+  parentComment?: {
+    relationTo: 'comments';
+    value: string | Comment;
+  } | null;
+  /**
+   * Depth of the comment in the reply tree (0 for top-level comments)
+   */
+  depth: number;
+  updatedAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -283,8 +406,8 @@ export interface PayloadLockedDocument {
         value: string | User;
       } | null)
     | ({
-        relationTo: 'media';
-        value: string | Media;
+        relationTo: 'images';
+        value: string | Image;
       } | null)
     | ({
         relationTo: 'occasions';
@@ -305,6 +428,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'albums';
         value: string | Album;
+      } | null)
+    | ({
+        relationTo: 'comments';
+        value: string | Comment;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -354,6 +481,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   displayName?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -366,12 +494,35 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
+ * via the `definition` "images_select".
  */
-export interface MediaSelect<T extends boolean = true> {
+export interface ImagesSelect<T extends boolean = true> {
   mediaId?: T;
-  uploadedBy?: T;
   alt?: T;
+  tags?:
+    | T
+    | {
+        location?: T;
+        occasion?: T;
+        whenType?: T;
+        whenValue?: T;
+        context?: T;
+        personTags?:
+          | T
+          | {
+              personId?: T;
+              confidence?: T;
+              coordinates?:
+                | T
+                | {
+                    x?: T;
+                    y?: T;
+                  };
+              id?: T;
+            };
+        id?: T;
+      };
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -383,6 +534,30 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -428,13 +603,27 @@ export interface ImageTagsSelect<T extends boolean = true> {
   whenValue?: T;
   whenValueConfidence?: T;
   mediaId?: T;
-  persons?: T;
+  personTags?:
+    | T
+    | {
+        personId?: T;
+        confidence?: T;
+        coordinates?:
+          | T
+          | {
+              x?: T;
+              y?: T;
+            };
+        createdBy?: T;
+        id?: T;
+      };
   location?: T;
   locationConfidence?: T;
   occasion?: T;
   occasionConfidence?: T;
   context?: T;
   remarks?: T;
+  status?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -450,6 +639,21 @@ export interface AlbumsSelect<T extends boolean = true> {
   images?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments_select".
+ */
+export interface CommentsSelect<T extends boolean = true> {
+  commentText?: T;
+  commentBy?: T;
+  image?: T;
+  createdAt?: T;
+  commentUpvotes?: T;
+  userVote?: T;
+  parentComment?: T;
+  depth?: T;
+  updatedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

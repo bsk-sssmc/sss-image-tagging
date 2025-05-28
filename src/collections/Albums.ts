@@ -44,7 +44,7 @@ export const Albums: CollectionConfig = {
     {
       name: 'images',
       type: 'relationship',
-      relationTo: 'media',
+      relationTo: 'images',
       hasMany: true,
       required: true,
       label: 'Images',
