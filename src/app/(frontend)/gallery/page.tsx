@@ -23,20 +23,32 @@ interface UniqueImage {
   albumNames: string[];
 }
 
+interface Image {
+  id: string;
+  url: string;
+}
+
 export default function GalleryPage() {
   const searchParams = useSearchParams();
   const _albumId = searchParams.get('album');
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [allImages, setAllImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
+  const [showAllImages, setShowAllImages] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/albums');
-        const data = await response.json();
-        setAlbums(data.docs);
+        const [albumsResponse, imagesResponse] = await Promise.all([
+          fetch('/api/albums'),
+          fetch('/api/images')
+        ]);
+        const albumsData = await albumsResponse.json();
+        const imagesData = await imagesResponse.json();
+        setAlbums(albumsData.docs);
+        setAllImages(imagesData.docs);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -47,7 +59,7 @@ export default function GalleryPage() {
     fetchData();
   }, []);
 
-  // Create a map of unique images
+  // Create a map of unique images from albums
   const uniqueImagesMap = albums.reduce((acc: Map<string, UniqueImage>, album: Album) => {
     album.images.forEach((image: { id: string; url: string }) => {
       if (!acc.has(image.url)) {
@@ -70,12 +82,16 @@ export default function GalleryPage() {
 
   const uniqueImages = Array.from(uniqueImagesMap.values()) as UniqueImage[];
 
-  const filteredImages = uniqueImages.filter((image: UniqueImage) => {
-    const matchesSearch = image.url.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAlbum = selectedAlbums.length === 0 || 
-      image.albumIds.some((albumId: string) => selectedAlbums.includes(albumId));
-    return matchesSearch && matchesAlbum;
-  });
+  const filteredImages = showAllImages 
+    ? allImages.filter((image: Image) => 
+        image.url.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : uniqueImages.filter((image: UniqueImage) => {
+        const matchesSearch = image.url.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesAlbum = selectedAlbums.length === 0 || 
+          image.albumIds.some((albumId: string) => selectedAlbums.includes(albumId));
+        return matchesSearch && matchesAlbum;
+      });
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
@@ -96,26 +112,40 @@ export default function GalleryPage() {
         </div>
 
         <div className="sidebar-section">
-          <h3>Albums</h3>
-          <div className="album-filters">
-            {albums.map((album: Album) => (
-              <label key={album.id} className="album-filter">
-                <input
-                  type="checkbox"
-                  checked={selectedAlbums.includes(album.id)}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    if (e.target.checked) {
-                      setSelectedAlbums([...selectedAlbums, album.id]);
-                    } else {
-                      setSelectedAlbums(selectedAlbums.filter((id: string) => id !== album.id));
-                    }
-                  }}
-                />
-                {album.name}
-                <span className="album-count">({album.images.length})</span>
-              </label>
-            ))}
+          <div className="show-all-toggle">
+            <label className="album-filter">
+              <input
+                type="checkbox"
+                checked={showAllImages}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowAllImages(e.target.checked)}
+              />
+              Show All Images
+            </label>
           </div>
+          {!showAllImages && (
+            <>
+              <h3>Albums</h3>
+              <div className="album-filters">
+                {albums.map((album: Album) => (
+                  <label key={album.id} className="album-filter">
+                    <input
+                      type="checkbox"
+                      checked={selectedAlbums.includes(album.id)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        if (e.target.checked) {
+                          setSelectedAlbums([...selectedAlbums, album.id]);
+                        } else {
+                          setSelectedAlbums(selectedAlbums.filter((id: string) => id !== album.id));
+                        }
+                      }}
+                    />
+                    {album.name}
+                    <span className="album-count">({album.images.length})</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </aside>
 
@@ -123,7 +153,7 @@ export default function GalleryPage() {
         <h1 className="gallery-heading">Gallery</h1>
 
         <div className="gallery-grid">
-          {filteredImages.map((image: UniqueImage) => (
+          {filteredImages.map((image: Image | UniqueImage) => (
             <Link
               key={image.id}
               href={`/tag/${image.id}`}
