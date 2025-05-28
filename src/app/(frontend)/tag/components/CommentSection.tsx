@@ -1,6 +1,7 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { ThumbsUp } from 'lucide-react';
+import { ThumbsUp, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
 
 interface Comment {
@@ -18,6 +19,10 @@ interface Comment {
   depth: number;
 }
 
+interface CommentWithChildren extends Comment {
+  children: CommentWithChildren[];
+}
+
 interface CommentSectionProps {
   imageId: string;
 }
@@ -26,6 +31,8 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
 
   const getInitials = (name: string) => {
     return name.charAt(0).toUpperCase();
@@ -100,37 +107,154 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
     }
   };
 
-  const renderComment = (comment: Comment) => {
+  const handleReply = (commentId: string) => {
+    setReplyTo(commentId);
+    setReplyText('');
+  };
+
+  const handleReplyInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setReplyText(e.target.value);
+  };
+
+  const handleReplyKeyDown = async (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    parentId: string,
+    depth: number
+  ) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!replyText.trim()) return;
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            commentText: replyText.trim(),
+            image: imageId,
+            parentComment: {
+              relationTo: 'comments',
+              value: parentId,
+            },
+            depth: depth + 1,
+          }),
+        });
+        if (!response.ok) throw new Error('Failed to post reply');
+        setReplyText('');
+        setReplyTo(null);
+        fetchComments();
+      } catch (error) {
+        console.error('Error posting reply:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const renderComment = (comment: Comment & { depth: number; children?: CommentWithChildren[] }) => {
     return (
-      <div key={comment.id} className="comment" style={{ marginLeft: `${comment.depth * 20}px` }}>
-        <div className="comment-header">
-          <div className="comment-user">
-            <div className="comment-avatar">
-            <div 
-                className="avatar-button"
-              >
-                {getInitials(comment.commentBy.displayName)}
+      <React.Fragment key={comment.id}>
+        <div className="comment" style={{ marginLeft: `${comment.depth * 32}px` }}>
+          <div className="comment-header">
+            <div className="comment-user">
+              <div className="comment-avatar">
+                <div className="avatar-button">
+                  {getInitials(comment.commentBy.displayName)}
+                </div>
+              </div>
+              <div className="comment-info">
+                <span className="comment-author">{comment.commentBy.displayName}</span>
+                <span className="comment-time">
+                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                </span>
               </div>
             </div>
-            <div className="comment-info">
-              <span className="comment-author">{comment.commentBy.displayName}</span>
-              <span className="comment-time">
-                {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                onClick={() => handleUpvote(comment.id, comment.userVote)}
+                className={`upvote-button ${comment.userVote === 'upvote' ? 'upvoted' : ''}`}
+              >
+                <ThumbsUp size={16} />
+                <span>{comment.commentUpvotes}</span>
+              </button>
+              <button
+                className="reply-button"
+                onClick={() => handleReply(comment.id)}
+                aria-label="Reply"
+                style={{ marginLeft: 8 }}
+              >
+                <MessageCircle size={16} color="#4a90e2" />
+              </button>
             </div>
           </div>
-          <button
-            onClick={() => handleUpvote(comment.id, comment.userVote)}
-            className={`upvote-button ${comment.userVote === 'upvote' ? 'upvoted' : ''}`}
-          >
-            <ThumbsUp size={16} />
-            <span>{comment.commentUpvotes}</span>
-          </button>
+          <p className="comment-text">{comment.commentText}</p>
         </div>
-        <p className="comment-text">{comment.commentText}</p>
-      </div>
+        {replyTo === comment.id && (
+          <div style={{ marginLeft: `${(comment.depth + 1) * 32}px`, marginTop: 8, marginBottom: 8 }}>
+            <textarea
+              value={replyText}
+              onChange={handleReplyInput}
+              onKeyDown={(e) => handleReplyKeyDown(e, comment.id, comment.depth)}
+              placeholder="Write a reply... (Press Enter to post)"
+              className="comment-input"
+              rows={2}
+              autoFocus
+            />
+          </div>
+        )}
+      </React.Fragment>
     );
   };
+
+  // Helper to build a tree from flat comments
+  function buildCommentTree(comments: Comment[]): CommentWithChildren[] {
+    const map = new Map<string, CommentWithChildren>();
+    const roots: CommentWithChildren[] = [];
+
+    comments.forEach(comment => {
+      map.set(comment.id, { ...comment, children: [] });
+    });
+
+    map.forEach(comment => {
+      let parentId: string | undefined;
+      if (comment.parentComment) {
+        parentId = typeof comment.parentComment === 'string'
+          ? comment.parentComment
+          : (comment.parentComment as any).value;
+      }
+      if (parentId) {
+        const parent = map.get(parentId);
+        if (parent) {
+          parent.children.push(comment);
+        } else {
+          roots.push(comment);
+        }
+      } else {
+        roots.push(comment);
+      }
+    });
+
+    function sortTree(nodes: CommentWithChildren[]) {
+      nodes.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      nodes.forEach(node => sortTree(node.children));
+    }
+    sortTree(roots);
+
+    return roots;
+  }
+
+  // Recursive render function
+  function renderCommentTree(comments: CommentWithChildren[] = [], depth = 0) {
+    return comments.map(comment => (
+      <React.Fragment key={comment.id}>
+        {renderComment({ ...comment, depth })}
+        {renderCommentTree(comment.children, depth + 1)}
+      </React.Fragment>
+    ));
+  }
+
+  const commentTree = buildCommentTree(comments);
 
   return (
     <div className="comment-section">
@@ -146,7 +270,7 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
         />
       </div>
       <div className="comments-list">
-        {comments.map(renderComment)}
+        {renderCommentTree(commentTree)}
       </div>
     </div>
   );

@@ -64,10 +64,12 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    'general-users': GeneralUserAuthOperations;
   };
   blocks: {};
   collections: {
     users: User;
+    'general-users': GeneralUser;
     images: Image;
     occasions: Occasion;
     locations: Location;
@@ -82,6 +84,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    'general-users': GeneralUsersSelect<false> | GeneralUsersSelect<true>;
     images: ImagesSelect<false> | ImagesSelect<true>;
     occasions: OccasionsSelect<false> | OccasionsSelect<true>;
     locations: LocationsSelect<false> | LocationsSelect<true>;
@@ -99,15 +102,37 @@ export interface Config {
   globals: {};
   globalsSelect: {};
   locale: null;
-  user: User & {
-    collection: 'users';
-  };
+  user:
+    | (User & {
+        collection: 'users';
+      })
+    | (GeneralUser & {
+        collection: 'general-users';
+      });
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface GeneralUserAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -133,9 +158,33 @@ export interface User {
   id: string;
   displayName: string;
   /**
-   * User role determines access level
+   * Admin role for PayloadCMS access
    */
-  role: 'user' | 'admin';
+  role: 'admin';
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  password?: string | null;
+}
+/**
+ * Frontend application users
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "general-users".
+ */
+export interface GeneralUser {
+  id: string;
+  displayName: string;
+  /**
+   * User role for frontend access
+   */
+  role: 'user';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -406,6 +455,10 @@ export interface PayloadLockedDocument {
         value: string | User;
       } | null)
     | ({
+        relationTo: 'general-users';
+        value: string | GeneralUser;
+      } | null)
+    | ({
         relationTo: 'images';
         value: string | Image;
       } | null)
@@ -434,10 +487,15 @@ export interface PayloadLockedDocument {
         value: string | Comment;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: string | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'general-users';
+        value: string | GeneralUser;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -447,10 +505,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: string;
-  user: {
-    relationTo: 'users';
-    value: string | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'general-users';
+        value: string | GeneralUser;
+      };
   key?: string | null;
   value?:
     | {
@@ -480,6 +543,23 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  displayName?: T;
+  role?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "general-users_select".
+ */
+export interface GeneralUsersSelect<T extends boolean = true> {
   displayName?: T;
   role?: T;
   updatedAt?: T;

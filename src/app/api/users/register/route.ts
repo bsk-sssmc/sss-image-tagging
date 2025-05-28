@@ -10,9 +10,9 @@ export async function POST(req: Request) {
 
     const { email, password, displayName } = await req.json()
 
-    // Create the user using Payload's Local API
+    // Create the user in the general-users collection
     const user = await payload.create({
-      collection: 'users',
+      collection: 'general-users',
       data: {
         email,
         password,

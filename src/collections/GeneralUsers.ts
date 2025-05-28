@@ -1,14 +1,15 @@
 import type { CollectionConfig } from 'payload'
 
-export const Users: CollectionConfig = {
-  slug: 'users',
+export const GeneralUsers: CollectionConfig = {
+  slug: 'general-users',
   admin: {
     useAsTitle: 'displayName',
-    group: 'Admin',
+    group: 'Users',
+    description: 'Frontend application users',
   },
   auth: {
     tokenExpiration: 7200, // 2 hours
-    verify: false,
+    verify: false, // Don't require email verification
     maxLoginAttempts: 5,
     lockTime: 600 * 1000, // 10 minutes
   },
@@ -42,19 +43,23 @@ export const Users: CollectionConfig = {
       label: 'Display Name',
     },
     {
+      name: 'email',
+      type: 'email',
+      required: true,
+      unique: true,
+    },
+    {
       name: 'role',
       type: 'select',
       required: true,
-      defaultValue: 'admin',
+      defaultValue: 'user',
       options: [
-        { label: 'Admin', value: 'admin' },
+        { label: 'User', value: 'user' },
       ],
       admin: {
-        description: 'Admin role for PayloadCMS access',
+        description: 'User role for frontend access',
         readOnly: true,
       },
     },
-    // Email added by default
-    // Add more fields as needed
   ],
-}
+} 
