@@ -34,7 +34,8 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return '?';
     return name.charAt(0).toUpperCase();
   };
 
