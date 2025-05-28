@@ -5,19 +5,23 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '../../../payload-types';
 
 interface AuthContextType {
-  user: User | null;
-  setUser: (user: User | null) => void;
+  user: (User & { collection?: string }) | null;
+  setUser: (user: (User & { collection?: string }) | null) => void;
   logout: () => Promise<void>;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<(User & { collection?: string }) | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const isLoginPage = pathname === '/login';
+
+  // Compute isAdmin based on user's collection
+  const isAdmin = user?.collection === 'users';
 
   // Handle initial mount and hydration
   useEffect(() => {
@@ -145,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout: handleLogout }}>
+    <AuthContext.Provider value={{ user, setUser, logout: handleLogout, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

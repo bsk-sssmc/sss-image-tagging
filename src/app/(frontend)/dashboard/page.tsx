@@ -7,19 +7,19 @@ import DashboardTagsTable from '../components/DashboardTagsTable';
 import ConsolidatedTagsTable from '../components/ConsolidatedTagsTable';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const router = useRouter();
 
   // Protect the dashboard route - only allow admin access
   useEffect(() => {
     if (!user) {
       router.push('/login');
-    } else if (user.role !== 'admin') {
+    } else if (!isAdmin) {
       router.push('/');
     }
-  }, [user, router]);
+  }, [user, isAdmin, router]);
 
-  if (!user || user.role !== 'admin') {
+  if (!user || !isAdmin) {
     return null;
   }
 

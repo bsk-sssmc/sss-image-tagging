@@ -8,7 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const isLoginPage = pathname === '/login';
   const [_authError, _setAuthError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -84,7 +84,7 @@ const Navbar = () => {
             >
               Gallery
             </Link>
-            {user.role === 'admin' && (
+            {isAdmin && (
               <Link 
                 href="/dashboard" 
                 className={`nav-link ${pathname === '/dashboard' ? 'active' : ''}`}
@@ -104,6 +104,15 @@ const Navbar = () => {
                   <div className="dropdown-user-info">
                     {user.displayName || user.email}
                   </div>
+                  {isAdmin && (
+                    <Link 
+                      href="/admin" 
+                      className="dropdown-admin-button"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
                   <button 
                     onClick={logout} 
                     className="dropdown-logout-button"

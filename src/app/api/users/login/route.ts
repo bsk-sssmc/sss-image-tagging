@@ -26,15 +26,41 @@ export async function POST(req: Request) {
 
       console.log('Login attempt for:', email)
 
-      // Use Payload's Local API to login and let it handle cookies
-      const { user, token } = await payload.login({
-        collection: 'users',
-        data: {
-          email,
-          password,
-        },
-        req, // Pass the request object to let Payload handle cookies
-      })
+      let user = null
+      let token = null
+      let collection = ''
+
+      // Try logging in as admin user first
+      try {
+        const result = await payload.login({
+          collection: 'users',
+          data: {
+            email,
+            password,
+          },
+          req,
+        })
+        user = result.user
+        token = result.token
+        collection = 'users'
+      } catch (error) {
+        // If admin login fails, try general user login
+        try {
+          const result = await payload.login({
+            collection: 'general-users',
+            data: {
+              email,
+              password,
+            },
+            req,
+          })
+          user = result.user
+          token = result.token
+          collection = 'general-users'
+        } catch (error) {
+          throw new Error('Invalid credentials')
+        }
+      }
 
       console.log('Login successful, token received:', token ? 'Yes' : 'No')
 
@@ -42,9 +68,15 @@ export async function POST(req: Request) {
         throw new Error('No token received from login')
       }
 
+      // Add collection information to user object
+      const userWithCollection = {
+        ...user,
+        collection,
+      }
+
       // Create the response with the user data and redirect URL
       const response = NextResponse.json({ 
-        user,
+        user: userWithCollection,
         redirectTo: from 
       })
 

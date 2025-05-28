@@ -13,6 +13,7 @@ import type { PayloadRequest } from 'payload'
 import { s3Storage } from '@payloadcms/storage-s3';
 
 import { Users } from './collections/Users'
+import { GeneralUsers } from './collections/GeneralUsers'
 import { Images } from './collections/Images'
 import { Locations } from './collections/Locations'
 import { Occasions } from './collections/Occasions'
@@ -34,7 +35,7 @@ export default buildConfig({
   auth: {
     jwtOrder: ['Bearer', 'cookie', 'JWT'],
   },
-  collections: [Users, Images, Occasions, Locations, Persons, ImageTags, Albums, Comments],
+  collections: [Users, GeneralUsers, Images, Occasions, Locations, Persons, ImageTags, Albums, Comments],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

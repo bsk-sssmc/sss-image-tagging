@@ -4303,4 +4303,22 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+.dropdown-admin-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: #4a90e2;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-admin-button:hover {
+  background-color: #404040;
+}
+
 
