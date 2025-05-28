@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
-export const Users: CollectionConfig = {
-  slug: 'users',
+export const Admins: CollectionConfig = {
+  slug: 'admins',
   auth: true,
   admin: {
     useAsTitle: 'displayName',
@@ -20,6 +20,18 @@ export const Users: CollectionConfig = {
       required: true,
       unique: true,
     },
-    // Add more fields as needed
+    {
+      name: 'role',
+      type: 'select',
+      required: true,
+      defaultValue: 'admin',
+      options: [
+        { label: 'Admin', value: 'admin' },
+      ],
+      admin: {
+        description: 'Admin role for PayloadCMS access',
+        readOnly: true,
+      },
+    },
   ],
-}
+} 

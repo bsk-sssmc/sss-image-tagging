@@ -63,13 +63,13 @@ export type SupportedTimezones =
 
 export interface Config {
   auth: {
+    admins: AdminAuthOperations;
     users: UserAuthOperations;
-    'general-users': GeneralUserAuthOperations;
   };
   blocks: {};
   collections: {
+    admins: Admin;
     users: User;
-    'general-users': GeneralUser;
     images: Image;
     occasions: Occasion;
     locations: Location;
@@ -83,8 +83,8 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
+    admins: AdminsSelect<false> | AdminsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
-    'general-users': GeneralUsersSelect<false> | GeneralUsersSelect<true>;
     images: ImagesSelect<false> | ImagesSelect<true>;
     occasions: OccasionsSelect<false> | OccasionsSelect<true>;
     locations: LocationsSelect<false> | LocationsSelect<true>;
@@ -103,15 +103,33 @@ export interface Config {
   globalsSelect: {};
   locale: null;
   user:
+    | (Admin & {
+        collection: 'admins';
+      })
     | (User & {
         collection: 'users';
-      })
-    | (GeneralUser & {
-        collection: 'general-users';
       });
   jobs: {
     tasks: unknown;
     workflows: unknown;
+  };
+}
+export interface AdminAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
   };
 }
 export interface UserAuthOperations {
@@ -132,29 +150,11 @@ export interface UserAuthOperations {
     password: string;
   };
 }
-export interface GeneralUserAuthOperations {
-  forgotPassword: {
-    email: string;
-    password: string;
-  };
-  login: {
-    email: string;
-    password: string;
-  };
-  registerFirstUser: {
-    email: string;
-    password: string;
-  };
-  unlock: {
-    email: string;
-    password: string;
-  };
-}
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
+ * via the `definition` "admins".
  */
-export interface User {
+export interface Admin {
   id: string;
   displayName: string;
   /**
@@ -173,18 +173,12 @@ export interface User {
   password?: string | null;
 }
 /**
- * Frontend application users
- *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "general-users".
+ * via the `definition` "users".
  */
-export interface GeneralUser {
+export interface User {
   id: string;
   displayName: string;
-  /**
-   * User role for frontend access
-   */
-  role: 'user';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -451,12 +445,12 @@ export interface PayloadLockedDocument {
   id: string;
   document?:
     | ({
-        relationTo: 'users';
-        value: string | User;
+        relationTo: 'admins';
+        value: string | Admin;
       } | null)
     | ({
-        relationTo: 'general-users';
-        value: string | GeneralUser;
+        relationTo: 'users';
+        value: string | User;
       } | null)
     | ({
         relationTo: 'images';
@@ -489,12 +483,12 @@ export interface PayloadLockedDocument {
   globalSlug?: string | null;
   user:
     | {
-        relationTo: 'users';
-        value: string | User;
+        relationTo: 'admins';
+        value: string | Admin;
       }
     | {
-        relationTo: 'general-users';
-        value: string | GeneralUser;
+        relationTo: 'users';
+        value: string | User;
       };
   updatedAt: string;
   createdAt: string;
@@ -507,12 +501,12 @@ export interface PayloadPreference {
   id: string;
   user:
     | {
-        relationTo: 'users';
-        value: string | User;
+        relationTo: 'admins';
+        value: string | Admin;
       }
     | {
-        relationTo: 'general-users';
-        value: string | GeneralUser;
+        relationTo: 'users';
+        value: string | User;
       };
   key?: string | null;
   value?:
@@ -540,9 +534,9 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users_select".
+ * via the `definition` "admins_select".
  */
-export interface UsersSelect<T extends boolean = true> {
+export interface AdminsSelect<T extends boolean = true> {
   displayName?: T;
   role?: T;
   updatedAt?: T;
@@ -557,11 +551,10 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "general-users_select".
+ * via the `definition` "users_select".
  */
-export interface GeneralUsersSelect<T extends boolean = true> {
+export interface UsersSelect<T extends boolean = true> {
   displayName?: T;
-  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

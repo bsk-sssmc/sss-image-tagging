@@ -9,7 +9,7 @@ export default function TagDefaultPage() {
   useEffect(() => {
     const fetchRandomImage = async () => {
       try {
-        const response = await fetch('/api/media/random', {
+        const response = await fetch('/api/auth/me', {
           credentials: 'include',
         });
         

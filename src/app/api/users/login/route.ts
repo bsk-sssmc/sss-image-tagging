@@ -29,44 +29,49 @@ export async function POST(req: Request) {
       let user = null
       let token = null
       let collection = ''
+      let loginError: Error | null = null
 
-      // Try logging in as admin user first
+      // Try admins collection first
       try {
-        const result = await payload.login({
-          collection: 'users',
+        const adminResult = await payload.login({
+          collection: 'admins',
           data: {
             email,
             password,
           },
-          req,
         })
-        user = result.user
-        token = result.token
-        collection = 'users'
-      } catch (error) {
-        // If admin login fails, try general user login
+        user = adminResult.user
+        token = adminResult.token
+        collection = 'admins'
+      } catch (adminError) {
+        console.log('Admin login failed:', adminError instanceof Error ? adminError.message : 'Unknown error')
+        loginError = adminError instanceof Error ? adminError : new Error('Admin login failed')
+        
+        // If admin login fails, try users collection
         try {
-          const result = await payload.login({
-            collection: 'general-users',
+          const userResult = await payload.login({
+            collection: 'users',
             data: {
               email,
               password,
             },
-            req,
           })
-          user = result.user
-          token = result.token
-          collection = 'general-users'
-        } catch (error) {
-          throw new Error('Invalid credentials')
+          user = userResult.user
+          token = userResult.token
+          collection = 'users'
+          loginError = null // Clear error if user login succeeds
+        } catch (userError) {
+          console.log('User login failed:', userError instanceof Error ? userError.message : 'Unknown error')
+          loginError = userError instanceof Error ? userError : new Error('User login failed')
         }
       }
 
-      console.log('Login successful, token received:', token ? 'Yes' : 'No')
-
-      if (!token) {
-        throw new Error('No token received from login')
+      // If both logins failed, throw the last error
+      if (!token || !user) {
+        throw loginError || new Error('Login failed for both admin and user collections')
       }
+
+      console.log('Login successful, token received:', token ? 'Yes' : 'No')
 
       // Add collection information to user object
       const userWithCollection = {
@@ -113,8 +118,8 @@ export async function POST(req: Request) {
         errorMessage = 'Invalid email or password'
       } else if (error.message.includes('No JSON data found')) {
         errorMessage = 'Invalid request format'
-      } else if (error.message.includes('No token received')) {
-        errorMessage = 'Authentication failed'
+      } else if (error.message.includes('Login failed for both admin and user collections')) {
+        errorMessage = 'Invalid email or password'
       }
     }
     

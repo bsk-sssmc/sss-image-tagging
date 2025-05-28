@@ -12,8 +12,8 @@ import type { PayloadRequest } from 'payload'
 
 import { s3Storage } from '@payloadcms/storage-s3';
 
+import { Admins } from './collections/Admins'
 import { Users } from './collections/Users'
-import { GeneralUsers } from './collections/GeneralUsers'
 import { Images } from './collections/Images'
 import { Locations } from './collections/Locations'
 import { Occasions } from './collections/Occasions'
@@ -27,7 +27,7 @@ const dirname = path.dirname(filename)
 
 export default buildConfig({
   admin: {
-    user: Users.slug,
+    user: Admins.slug,
     importMap: {
       baseDir: path.resolve(dirname),
     },
@@ -35,7 +35,7 @@ export default buildConfig({
   auth: {
     jwtOrder: ['Bearer', 'cookie', 'JWT'],
   },
-  collections: [Users, GeneralUsers, Images, Occasions, Locations, Persons, ImageTags, Albums, Comments],
+  collections: [Admins, Users, Images, Occasions, Locations, Persons, ImageTags, Albums, Comments],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
