@@ -36,7 +36,7 @@ export function middleware(request: NextRequest) {
     // Check if user is an admin by making a request to /api/auth/me
     return fetch(new URL('/api/auth/me', request.url), {
       headers: {
-        Cookie: `payload-token=${token}`,
+        Cookie: `token=${token}; payload-token=${token}`,
       },
     }).then(async (response) => {
       if (!response.ok) {
