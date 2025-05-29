@@ -336,7 +336,7 @@ export interface ImageTag {
   /**
    * Type of date information
    */
-  whenType?: ('' | 'full_date' | 'decades' | 'year' | 'month_year') | null;
+  whenType?: ('full_date' | 'decades' | 'year' | 'month_year') | null;
   /**
    * Value received from frontend form
    */
@@ -416,21 +416,21 @@ export interface Album {
 export interface Comment {
   id: string;
   commentText: string;
-  commentBy: string | User;
+  commentBy:
+    | {
+        relationTo: 'users';
+        value: string | User;
+      }
+    | {
+        relationTo: 'admins';
+        value: string | Admin;
+      };
   image: string | Image;
   createdAt: string;
-  commentUpvotes: number;
-  /**
-   * The current user's vote on this comment
-   */
-  userVote?: ('upvote' | 'downvote') | null;
   /**
    * If this is a reply, link to the parent comment
    */
-  parentComment?: {
-    relationTo: 'comments';
-    value: string | Comment;
-  } | null;
+  parentComment?: (string | null) | Comment;
   /**
    * Depth of the comment in the reply tree (0 for top-level comments)
    */
@@ -722,8 +722,6 @@ export interface CommentsSelect<T extends boolean = true> {
   commentBy?: T;
   image?: T;
   createdAt?: T;
-  commentUpvotes?: T;
-  userVote?: T;
   parentComment?: T;
   depth?: T;
   updatedAt?: T;

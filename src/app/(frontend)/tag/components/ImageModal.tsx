@@ -35,6 +35,7 @@ interface ImageModalProps {
   }>;
   persons: Person[];
   setPersons: React.Dispatch<React.SetStateAction<Person[]>>;
+  initialPins?: Pin[];
 }
 
 interface PinMenuPosition {
@@ -48,7 +49,7 @@ interface CreatePersonData {
   shortDescription: string;
 }
 
-export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [], persons, setPersons }: ImageModalProps) {
+export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [], persons, setPersons, initialPins = [] }: ImageModalProps) {
   const [userPins, setUserPins] = useState<Pin[]>([]);
   const [verifiedPins, setVerifiedPins] = useState<Pin[]>([]);
   const [isPlacingPin, setIsPlacingPin] = useState(false);
@@ -70,7 +71,7 @@ export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [
       .flatMap((tag) => tag.personTags || [])
       .filter((tag) => tag.coordinates)
       .map((tag) => ({
-        id: `verified-${tag.personId.id}`,
+        id: `verified-${tag.personId.id}-${tag.coordinates!.x}-${tag.coordinates!.y}`,
         x: tag.coordinates!.x,
         y: tag.coordinates!.y,
         personId: tag.personId.id,
@@ -133,6 +134,13 @@ export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [
     }
   }, [isOpen]);
 
+  // Update userPins when initialPins changes or modal opens
+  useEffect(() => {
+    if (isOpen && initialPins.length > 0) {
+      setUserPins(initialPins);
+    }
+  }, [isOpen, initialPins]);
+
   const handleCloseMenu = useCallback(() => {
     if (selectedPinId) {
       const selectedPin = userPins.find(pin => pin.id === selectedPinId);
@@ -183,7 +191,8 @@ export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [
       const newPin: Pin = {
         id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         x,
-        y
+        y,
+        confidence: '3' // Set default confidence
       };
       setUserPins([...userPins, newPin]);
       setSelectedPinId(newPin.id);
@@ -277,11 +286,22 @@ export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [
   };
 
   const handlePersonSelect = (personId: string, confidence: string = '3') => {
-    const updatedPins = userPins.map((pin: Pin) => 
-      pin.id === selectedPinId 
-        ? { ...pin, personId, confidence } 
-        : pin
-    );
+    if (!selectedPinId) return;
+    
+    const updatedPins = userPins.map((pin: Pin) => {
+      if (pin.id === selectedPinId) {
+        return {
+          ...pin,
+          personId,
+          confidence,
+          // Preserve the original x and y coordinates
+          x: pin.x,
+          y: pin.y
+        };
+      }
+      return pin;
+    });
+    
     setUserPins(updatedPins);
     setSelectedPinId(null);
     
@@ -320,13 +340,30 @@ export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [
       const responseData = await response.json();
       const newPerson = responseData.doc;
       setPersons([...persons, newPerson]);
-      // Select the new person but keep the menu open
-      setUserPins(userPins.map(pin => 
-        pin.id === selectedPinId 
-          ? { ...pin, personId: newPerson.id } 
-          : pin
-      ));
-      // Close only the create person modal
+      
+      // Update the pin with the new person ID while preserving coordinates
+      if (selectedPinId) {
+        const updatedPins = userPins.map(pin => {
+          if (pin.id === selectedPinId) {
+            return {
+              ...pin,
+              personId: newPerson.id,
+              confidence: '3',
+              // Preserve the original x and y coordinates
+              x: pin.x,
+              y: pin.y
+            };
+          }
+          return pin;
+        });
+        setUserPins(updatedPins);
+        
+        // Dispatch event to update pins in TagForm
+        window.dispatchEvent(new CustomEvent('pinUpdate', { 
+          detail: { pins: updatedPins }
+        }));
+      }
+      
       setIsCreatePersonModalOpen(false);
     } catch (error) {
       console.error('Error creating person:', error);

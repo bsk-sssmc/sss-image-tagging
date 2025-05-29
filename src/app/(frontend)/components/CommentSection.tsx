@@ -4,8 +4,14 @@ import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
 import type { Comment as PayloadComment, User } from '../../../payload-types';
 
-interface Comment extends PayloadComment {
-  commentBy: User;
+interface Comment extends Omit<PayloadComment, 'commentBy' | 'parentComment'> {
+  commentBy: {
+    relationTo: 'users';
+    value: User;
+  };
+  parentComment?: string;
+  userVote?: 'upvote' | 'downvote' | null;
+  commentUpvotes?: number;
 }
 
 interface CommentWithChildren extends Comment {
@@ -90,9 +96,9 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
 
   const renderAvatar = (comment: Comment) => {
     // Since User type doesn't have avatar, we'll always show initials
-    const initial = comment.commentBy.displayName?.[0]?.toUpperCase() || '?';
+    const initial = comment.commentBy.value.displayName?.[0]?.toUpperCase() || '?';
     return (
-      <span className="comment-avatar-initial" title={comment.commentBy.displayName}>
+      <span className="comment-avatar-initial" title={comment.commentBy.value.displayName}>
         {initial}
       </span>
     );
@@ -120,10 +126,7 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
           body: JSON.stringify({
             commentText: replyText.trim(),
             image: imageId,
-            parentComment: {
-              relationTo: 'comments',
-              value: parentId
-            },
+            parentComment: parentId,
             depth: depth + 1,
           }),
         });
@@ -147,7 +150,7 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
             <div className="comment-user">
               <span className="comment-avatar">{renderAvatar(comment)}</span>
               <div className="comment-info">
-                <span className="comment-author">{comment.commentBy.displayName}</span>
+                <span className="comment-author">{comment.commentBy.value.displayName}</span>
                 <span className="comment-time">
                   {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                 </span>
@@ -202,16 +205,14 @@ const CommentSection: React.FC<{ imageId: string }> = ({ imageId }) => {
     });
 
     // Build tree
-    map.forEach(comment => {
-      if (comment.parentComment?.value) {
-        const parent = map.get(comment.parentComment.value as string);
+    comments.forEach(comment => {
+      if (comment.parentComment) {
+        const parent = map.get(comment.parentComment);
         if (parent) {
-          parent.children.push(comment);
-        } else {
-          roots.push(comment); // Orphaned reply, treat as root
+          parent.children.push(map.get(comment.id)!);
         }
       } else {
-        roots.push(comment);
+        roots.push(map.get(comment.id)!);
       }
     });
 
