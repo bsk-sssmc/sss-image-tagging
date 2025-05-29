@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../context/AuthContext'
+import ReCAPTCHA from 'react-google-recaptcha'
 
 export default function AuthForms() {
   const [showRegister, setShowRegister] = useState(false)
@@ -10,6 +11,8 @@ export default function AuthForms() {
   const [showDisplayNameForm, setShowDisplayNameForm] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
+  const recaptchaRef = useRef<ReCAPTCHA>(null)
   const router = useRouter()
   const { setUser } = useAuth()
 
@@ -44,6 +47,12 @@ export default function AuthForms() {
     setError('')
     setIsLoading(true)
     
+    if (!recaptchaToken) {
+      setError('Please complete the reCAPTCHA verification')
+      setIsLoading(false)
+      return
+    }
+
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
     const password = formData.get('password') as string
@@ -63,7 +72,8 @@ export default function AuthForms() {
         },
         body: JSON.stringify({
           email: email.trim(),
-          password: password
+          password: password,
+          recaptchaToken
         }),
         credentials: 'include',
       })
@@ -77,7 +87,8 @@ export default function AuthForms() {
           },
           body: JSON.stringify({
             email: email.trim(),
-            password: password
+            password: password,
+            recaptchaToken
           }),
           credentials: 'include',
         })
@@ -123,6 +134,11 @@ export default function AuthForms() {
     e.preventDefault()
     setError('')
 
+    if (!recaptchaToken) {
+      setError('Please complete the reCAPTCHA verification')
+      return
+    }
+
     const formData = new FormData(e.currentTarget)
     const displayName = formData.get('displayName') as string
     const email = formData.get('email') as string
@@ -144,6 +160,7 @@ export default function AuthForms() {
           email,
           password,
           displayName,
+          recaptchaToken
         }),
       })
 
@@ -199,6 +216,17 @@ export default function AuthForms() {
     }
   }
 
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token)
+  }
+
+  const resetRecaptcha = () => {
+    setRecaptchaToken(null)
+    if (recaptchaRef.current) {
+      recaptchaRef.current.reset()
+    }
+  }
+
   if (showDisplayNameForm) {
     return (
       <div className="auth-container">
@@ -231,11 +259,18 @@ export default function AuthForms() {
         <div className="form-group">
           <input type="password" name="password" placeholder="Password" required disabled={isLoading} />
         </div>
+        <div className="form-group">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
+            onChange={handleRecaptchaChange}
+          />
+        </div>
         <button type="submit" className="auth-button" disabled={isLoading}>
           {isLoading ? 'Logging in...' : 'Login'}
         </button>
         <p className="switch-form">
-          New user? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(true) }}>Register here</a>
+          New user? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(true); resetRecaptcha(); }}>Register here</a>
         </p>
         {isLoading && (
           <div className="loading-overlay">
@@ -259,9 +294,16 @@ export default function AuthForms() {
         <div className="form-group">
           <input type="password" name="verifyPassword" placeholder="Verify Password" required />
         </div>
+        <div className="form-group">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
+            onChange={handleRecaptchaChange}
+          />
+        </div>
         <button type="submit" className="auth-button">Register</button>
         <p className="switch-form">
-          Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(false) }}>Login here</a>
+          Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setShowRegister(false); resetRecaptcha(); }}>Login here</a>
         </p>
       </form>
     </div>
