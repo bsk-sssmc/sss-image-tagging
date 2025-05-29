@@ -1,22 +1,11 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import React, { useState, useEffect } from 'react';
 import { ThumbsUp, MessageCircle } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
+import type { Comment as PayloadComment, User } from '../../../../payload-types';
 
-interface Comment {
-  id: string;
-  commentText: string;
-  commentBy: {
-    id: string;
-    displayName: string;
-    avatar?: string;
-  };
-  createdAt: string;
-  commentUpvotes: number;
-  userVote?: 'upvote' | 'downvote';
-  parentComment?: string;
-  depth: number;
+interface Comment extends PayloadComment {
+  commentBy: User;
 }
 
 interface CommentWithChildren extends Comment {
@@ -30,9 +19,10 @@ interface CommentSectionProps {
 export default function CommentSection({ imageId }: CommentSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   const getInitials = (name: string | undefined) => {
     if (!name) return '?';
@@ -61,7 +51,7 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
       e.preventDefault();
       if (!newComment.trim()) return;
 
-      setIsLoading(true);
+      setIsSubmittingComment(true);
       try {
         const response = await fetch('/api/comments', {
           method: 'POST',
@@ -82,12 +72,12 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
       } catch (error) {
         console.error('Error posting comment:', error);
       } finally {
-        setIsLoading(false);
+        setIsSubmittingComment(false);
       }
     }
   };
 
-  const handleUpvote = async (commentId: string, currentVote?: 'upvote' | 'downvote') => {
+  const handleUpvote = async (commentId: string, currentVote?: 'upvote' | 'downvote' | null) => {
     try {
       const newVote = currentVote === 'upvote' ? undefined : 'upvote';
       const response = await fetch(`/api/comments/${commentId}`, {
@@ -125,7 +115,7 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (!replyText.trim()) return;
-      setIsLoading(true);
+      setIsSubmittingReply(true);
       try {
         const response = await fetch('/api/comments', {
           method: 'POST',
@@ -148,12 +138,12 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
       } catch (error) {
         console.error('Error posting reply:', error);
       } finally {
-        setIsLoading(false);
+        setIsSubmittingReply(false);
       }
     }
   };
 
-  const renderComment = (comment: Comment & { depth: number; children?: CommentWithChildren[] }) => {
+  const renderComment = (comment: Comment) => {
     return (
       <React.Fragment key={comment.id}>
         <div className="comment" style={{ marginLeft: `${comment.depth * 32}px` }}>
@@ -192,7 +182,12 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
           <p className="comment-text">{comment.commentText}</p>
         </div>
         {replyTo === comment.id && (
-          <div style={{ marginLeft: `${(comment.depth + 1) * 32}px`, marginTop: 8, marginBottom: 8 }}>
+          <div style={{ marginLeft: `${(comment.depth + 1) * 32}px`, marginTop: 8, marginBottom: 8, position: 'relative' }}>
+             {isSubmittingReply && (
+               <div className="loading-overlay">
+                 <div className="loading-spinner"></div>
+               </div>
+             )}
             <textarea
               value={replyText}
               onChange={handleReplyInput}
@@ -200,6 +195,7 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
               placeholder="Write a reply... (Press Enter to post)"
               className="comment-input"
               rows={2}
+              disabled={isSubmittingReply}
               autoFocus
             />
           </div>
@@ -259,7 +255,12 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
 
   return (
     <div className="comment-section">
-      <div className="comment-input-container">
+      <div className="comment-input-container" style={{ position: 'relative' }}>
+        {isSubmittingComment && (
+          <div className="loading-overlay">
+            <div className="loading-spinner"></div>
+          </div>
+        )}
         <textarea
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
@@ -267,7 +268,7 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
           placeholder="Write a comment... (Press Enter to post)"
           className="comment-input"
           rows={3}
-          disabled={isLoading}
+          disabled={isSubmittingComment}
         />
       </div>
       <div className="comments-list">
