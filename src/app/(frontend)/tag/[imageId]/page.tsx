@@ -17,12 +17,24 @@ interface Media {
   alt?: string;
 }
 
+interface Pin {
+  id: string;
+  x: number;
+  y: number;
+  personId?: string;
+  confidence?: string;
+  isVerified?: boolean;
+}
+
+interface PersonTag {
+  personId: string;
+  name: string;
+  confidence: string;
+}
+
 // Updated to match the FormState type expected by TagForm
 interface FormState {
-  selectedPersons: Array<{
-    id: string;
-    name: string;
-  }>;
+  selectedPersons: PersonTag[];
   selectedLocation: {
     id: string;
     name: string;
@@ -66,6 +78,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
       };
     }>;
   }>>([]);
+  const [currentPins, setCurrentPins] = useState<Pin[]>([]);
   const router = useRouter();
   const { imageId } = use(params);
   const hasInitialized = useRef(false);
@@ -113,6 +126,18 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     window.addEventListener('openImageModal', handleOpenImageModal as EventListener);
     return () => {
       window.removeEventListener('openImageModal', handleOpenImageModal as EventListener);
+    };
+  }, []);
+
+  // Add effect to listen for pin updates
+  useEffect(() => {
+    const handlePinUpdate = (event: CustomEvent<{ pins: Pin[] }>) => {
+      setCurrentPins(event.detail.pins);
+    };
+
+    window.addEventListener('pinUpdate', handlePinUpdate as EventListener);
+    return () => {
+      window.removeEventListener('pinUpdate', handlePinUpdate as EventListener);
     };
   }, []);
 
@@ -199,7 +224,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
       // First, create a new tag in the Image Tags collection
       const tagPayload = {
         mediaId: imageId, // PayloadCMS will handle the relationship
-        whenType: formData.dateType || 'full_date', // Must be one of the valid options
+        whenType: formData.dateType || null,
         whenValue: formData.dateValue || '',
         whenValueConfidence: formData.dateConfidence || '3',
         location: formData.selectedLocation?.id || null,
@@ -209,14 +234,18 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
         context: formData.context || '',
         remarks: formData.remarks || '',
         status: 'Tagged',
-        personTags: formData.selectedPersons.map(person => ({
-          personId: person.id, // PayloadCMS will handle the relationship
-          confidence: formData.locationConfidence || '3',
-          coordinates: {
-            x: 50, // Default to center
-            y: 50  // Default to center
-          }
-        }))
+        personTags: formData.selectedPersons.map(personTag => {
+          // Find the corresponding pin for this person using the personId from the PersonTag
+          const pin = formData.pins.find(p => p.personId === personTag.personId);
+          return {
+            personId: personTag.personId, // Use personId from the PersonTag
+            confidence: personTag.confidence, // Use confidence from the PersonTag
+            coordinates: pin ? {
+              x: pin.x,
+              y: pin.y
+            } : undefined, // Only include coordinates if a pin exists
+          };
+        })
       };
 
       console.log('=== Tag Payload ===');
@@ -440,6 +469,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
           verifiedTags={verifiedTags}
           persons={persons}
           setPersons={setPersons}
+          initialPins={currentPins}
         />
       )}
     </div>

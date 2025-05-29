@@ -37,18 +37,24 @@ export default function GalleryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [showAllImages, setShowAllImages] = useState(true);
+  
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [totalImages, setTotalImages] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [albumsResponse, imagesResponse] = await Promise.all([
           fetch('/api/albums'),
-          fetch('/api/images')
+          fetch(`/api/images?page=${currentPage}&limit=${itemsPerPage}`)
         ]);
         const albumsData = await albumsResponse.json();
         const imagesData = await imagesResponse.json();
         setAlbums(albumsData.docs);
         setAllImages(imagesData.docs);
+        setTotalImages(imagesData.totalDocs);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -57,7 +63,7 @@ export default function GalleryPage() {
     };
 
     fetchData();
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   // Create a map of unique images from albums
   const uniqueImagesMap = albums.reduce((acc: Map<string, UniqueImage>, album: Album) => {
@@ -153,6 +159,32 @@ export default function GalleryPage() {
               />
             </Link>
           ))}
+        </div>
+
+        {/* Add pagination controls */}
+        <div className="pagination-controls">
+          <div className="pagination-info">
+            Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalImages)} of {totalImages} images
+          </div>
+          <div className="pagination-buttons">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="pagination-button"
+            >
+              Previous
+            </button>
+            <span className="pagination-page">
+              Page {currentPage} of {Math.ceil(totalImages / itemsPerPage)}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(totalImages / itemsPerPage)))}
+              disabled={currentPage >= Math.ceil(totalImages / itemsPerPage)}
+              className="pagination-button"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </main>
     </div>

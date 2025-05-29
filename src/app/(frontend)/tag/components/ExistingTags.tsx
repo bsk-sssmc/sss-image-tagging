@@ -135,6 +135,86 @@ export default function ExistingTags({ imageId, onTagRemove }: ExistingTagsProps
     }
   };
 
+  const handleConfidenceChange = async (tagId: string, personId: string, newConfidence: string) => {
+    try {
+      const response = await fetch(`/api/image-tags/${tagId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          personTags: tags
+            .find(tag => tag.id === tagId)
+            ?.personTags.map(pt => 
+              pt.personId.id === personId 
+                ? { ...pt, confidence: newConfidence }
+                : pt
+            )
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update confidence');
+      }
+
+      // Update local state
+      setTags(prevTags => 
+        prevTags.map(tag => 
+          tag.id === tagId
+            ? {
+                ...tag,
+                personTags: tag.personTags.map(pt =>
+                  pt.personId.id === personId
+                    ? { ...pt, confidence: newConfidence }
+                    : pt
+                )
+              }
+            : tag
+        )
+      );
+
+      // Update cache
+      if (apiCache.imageTags.has(imageId)) {
+        const cachedData = apiCache.imageTags.get(imageId);
+        if (cachedData) {
+          cachedData.docs = cachedData.docs.map(tag =>
+            tag.id === tagId
+              ? {
+                  ...tag,
+                  personTags: tag.personTags.map(pt =>
+                    pt.personId.id === personId
+                      ? { ...pt, confidence: newConfidence }
+                      : pt
+                  )
+                }
+              : tag
+          );
+          apiCache.imageTags.set(imageId, cachedData);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating confidence:', error);
+    }
+  };
+
+  const renderConfidenceSelector = (tagId: string, personId: string, currentConfidence?: string) => {
+    return (
+      <div className="confidence-selector">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            className={`confidence-star ${currentConfidence === rating.toString() ? 'selected' : ''}`}
+            onClick={() => handleConfidenceChange(tagId, personId, rating.toString())}
+            title={`Confidence level ${rating}`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   const renderConfidenceStars = (confidence?: string) => {
     if (!confidence) return null;
     const numStars = parseInt(confidence);
@@ -164,10 +244,13 @@ export default function ExistingTags({ imageId, onTagRemove }: ExistingTagsProps
               <strong>Who:</strong>
               <div className="tag-values">
                 {tag.personTags.map(personTag => (
-                  <span key={personTag.personId.id} className="tag-value">
-                    {personTag.personId.name}
-                    {personTag.confidence && renderConfidenceStars(personTag.confidence)}
-                  </span>
+                  <div key={personTag.personId.id} className="tag-value-container">
+                    <span className="tag-value">
+                      {personTag.personId.name}
+                      {personTag.confidence && renderConfidenceStars(personTag.confidence)}
+                    </span>
+                    {renderConfidenceSelector(tag.id, personTag.personId.id, personTag.confidence)}
+                  </div>
                 ))}
               </div>
             </div>

@@ -29,6 +29,12 @@ interface Pin {
   confidence?: string;
 }
 
+interface PersonTag {
+  personId: string;
+  name: string;
+  confidence: string;
+}
+
 interface TagFormProps {
   onSubmit: (formData: FormState) => void;
   _currentImageUrl?: string;
@@ -38,7 +44,7 @@ interface TagFormProps {
 }
 
 interface FormState {
-  selectedPersons: Person[];
+  selectedPersons: PersonTag[];
   selectedLocation: Location | null;
   locationConfidence: string;
   selectedOccasion: Occasion | null;
@@ -96,16 +102,16 @@ const apiCache = {
 const styles = ``;
 
 export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, persons, setPersons }: TagFormProps) {
-  const [selectedPersons, setSelectedPersons] = useState<Person[]>([]);
+  const [selectedPersons, setSelectedPersons] = useState<PersonTag[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-  const [locationConfidence, setLocationConfidence] = useState('3');
+  const [locationConfidence, setLocationConfidence] = useState('');
   const [_locationHoverRating, _setLocationHoverRating] = useState(0);
   const [selectedOccasion, setSelectedOccasion] = useState<Occasion | null>(null);
-  const [occasionConfidence, setOccasionConfidence] = useState('3');
+  const [occasionConfidence, setOccasionConfidence] = useState('');
   const [_occasionHoverRating, _setOccasionHoverRating] = useState(0);
   const [dateType, setDateType] = useState('');
   const [dateValue, setDateValue] = useState('');
-  const [dateConfidence, setDateConfidence] = useState('3');
+  const [dateConfidence, setDateConfidence] = useState('');
   const [_dateHoverRating, _setDateHoverRating] = useState(0);
   const [context, setContext] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
@@ -141,12 +147,12 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
   const [_initialFormState, _setInitialFormState] = useState<FormState>({
     selectedPersons: [],
     selectedLocation: null,
-    locationConfidence: '3',
+    locationConfidence: '',
     selectedOccasion: null,
-    occasionConfidence: '3',
+    occasionConfidence: '',
     dateType: '',
     dateValue: '',
-    dateConfidence: '3',
+    dateConfidence: '',
     context: '',
     remarks: '',
     pins: []
@@ -297,8 +303,21 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
     console.log('handlePersonSelect called with person:', person);
     console.log('Current selectedPersons before update:', selectedPersons);
     
-    // Create a new array with the selected person
-    const newSelectedPersons = [...selectedPersons, person];
+    // Check if the person is already selected
+    if (selectedPersons.find(p => p.personId === person.id)) {
+      console.log('Person already selected.');
+      return; // Do not add if already exists
+    }
+
+    // Create a new PersonTag object with default confidence
+    const newPersonTag: PersonTag = {
+      personId: person.id,
+      name: person.name,
+      confidence: '3' // Set default confidence
+    };
+
+    // Create a new array with the selected person tag
+    const newSelectedPersons = [...selectedPersons, newPersonTag];
     console.log('Setting new selectedPersons:', newSelectedPersons);
     
     // Update state directly
@@ -313,13 +332,40 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
     console.log('Removing person:', personId);
     console.log('Current selectedPersons before removal:', selectedPersons);
     
-    // Create a new array without the removed person
-    const newSelectedPersons = selectedPersons.filter((p: Person) => p.id !== personId);
+    // Create a new array without the removed person tag
+    const newSelectedPersons = selectedPersons.filter((p: PersonTag) => p.personId !== personId);
     console.log('Setting new selectedPersons after removal:', newSelectedPersons);
     
     // Update state directly
     setSelectedPersons(newSelectedPersons);
   };
+
+  // Update confidence when location is selected/deselected
+  useEffect(() => {
+    if (selectedLocation && !locationConfidence) {
+      setLocationConfidence('3');
+    } else if (!selectedLocation) {
+      setLocationConfidence('');
+    }
+  }, [selectedLocation]);
+
+  // Update confidence when occasion is selected/deselected
+  useEffect(() => {
+    if (selectedOccasion && !occasionConfidence) {
+      setOccasionConfidence('3');
+    } else if (!selectedOccasion) {
+      setOccasionConfidence('');
+    }
+  }, [selectedOccasion]);
+
+  // Update confidence when date is selected/deselected
+  useEffect(() => {
+    if (dateType && !dateConfidence) {
+      setDateConfidence('3');
+    } else if (!dateType) {
+      setDateConfidence('');
+    }
+  }, [dateType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,26 +375,16 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
       console.log('Form submission - Current selectedPersons:', selectedPersons);
       console.log('Form submission - selectedPersons type:', typeof selectedPersons);
       console.log('Form submission - selectedPersons is array:', Array.isArray(selectedPersons));
-      
-      // Validate that at least one person is selected
-      if (!selectedPersons || selectedPersons.length === 0) {
-        console.log('No persons selected, showing error');
-        setShowNotification(true);
-        setNotificationType('error');
-        setNotificationMessage('Please select at least one person');
-        setIsSubmitting(false);
-        return;
-      }
 
       const formData: FormState = {
         selectedPersons,
         selectedLocation,
-        locationConfidence,
+        locationConfidence: selectedLocation ? locationConfidence : '',
         selectedOccasion,
-        occasionConfidence,
+        occasionConfidence: selectedOccasion ? occasionConfidence : '',
         dateType,
-        dateValue,
-        dateConfidence,
+        dateValue: dateType ? dateValue : '',
+        dateConfidence: dateType ? dateConfidence : '',
         context,
         remarks,
         pins
@@ -436,20 +472,37 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
       const updatedPins = event.detail.pins;
       setPins(updatedPins);
       
-      // Update selectedPersons based on pins with personId
-      const personsFromPins = updatedPins
+      // Update selectedPersons based on pins with personId and confidence
+      const personsFromPins: PersonTag[] = updatedPins
         .filter((pin: Pin) => pin.personId)
         .map((pin: Pin) => ({
-          id: pin.personId!,
-          name: persons.find((p: Person) => p.id === pin.personId)?.name || ''
+          personId: pin.personId!,
+          name: persons.find((p: Person) => p.id === pin.personId)?.name || '',
+          confidence: pin.confidence || '3' // Use pin's confidence or default
         }))
-        .filter((person: { id: string; name: string }) => person.name); // Only include persons that were found in persons
+        .filter((personTag: PersonTag) => personTag.name); // Only include persons that were found in persons
 
-      // Update selectedPersons without duplicates
-      setSelectedPersons((prev: Person[]) => {
-        const existingIds = new Set(prev.map((p: Person) => p.id));
-        const newPersons = personsFromPins.filter((p: { id: string; name: string }) => !existingIds.has(p.id));
-        return [...prev, ...newPersons];
+      // Merge personsFromPins with existing selectedPersons, prioritizing confidence from pins
+      setSelectedPersons(prevSelectedPersons => {
+        const mergedPersons: PersonTag[] = [];
+        const personsFromPinsMap = new Map(personsFromPins.map(p => [p.personId, p]));
+
+        // Add existing selected persons, updating confidence if a corresponding pin exists
+        prevSelectedPersons.forEach(prevPerson => {
+          if (personsFromPinsMap.has(prevPerson.personId)) {
+            mergedPersons.push(personsFromPinsMap.get(prevPerson.personId)!); // Use confidence from pin
+            personsFromPinsMap.delete(prevPerson.personId); // Remove from map as it's been processed
+          } else {
+            mergedPersons.push(prevPerson); // Keep existing person and confidence
+          }
+        });
+
+        // Add any new persons from pins that were not already in selectedPersons
+        personsFromPinsMap.forEach(newPerson => {
+          mergedPersons.push(newPerson);
+        });
+
+        return mergedPersons;
       });
     };
 
@@ -477,51 +530,43 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
       </div>
 
       <div className="form-group">
-        <label>People <span className="required">*</span></label>
-        <div className="tag-preview" style={{ marginTop: '8px', display: selectedPersons && selectedPersons.length > 0 ? 'flex' : 'block', gap: '8px', flexWrap: 'wrap', background: 'none', boxShadow: 'none', padding: 0 }}>
+        <label>People</label>
+        <div className="tag-preview" style={{ marginTop: '8px', display: selectedPersons && selectedPersons.length > 0 ? 'block' : 'block', gap: '8px', flexWrap: 'wrap', background: 'none', boxShadow: 'none', padding: 0 }}>
           {selectedPersons && selectedPersons.length > 0 ? (
-            selectedPersons.map((person: Person) => (
-              <span 
-                key={person.id} 
-                className="tag-preview"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  margin: 0,
-                  padding: '4px 12px',
-                  backgroundColor: '#23262F',
-                  border: '1px solid #4a90e2',
-                  borderRadius: '8px',
-                  color: '#4a90e2',
-                  fontWeight: 500,
-                  fontSize: '1rem',
-                  boxShadow: 'none',
-                }}
-              >
-                {person.name}
+            selectedPersons.map((personTag: PersonTag) => (
+              <div key={personTag.personId} className="person-tag-row" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <span className="person-name" style={{ marginRight: '8px' }}>{personTag.name}</span>
+                <div className="star-rating" style={{ display: 'flex', alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <span
+                      key={rating}
+                      className={`star ${parseInt(personTag.confidence) >= rating ? 'filled' : ''}`}
+                      onClick={() => {
+                        // Update confidence for this person tag
+                        setSelectedPersons(prevSelected =>
+                          prevSelected.map(p =>
+                            p.personId === personTag.personId ? { ...p, confidence: rating.toString() } : p
+                          )
+                        );
+                      }}
+                      style={{ cursor: 'pointer', color: parseInt(personTag.confidence) >= rating ? '#ffc107' : '#e4e5e9' }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
                 <button
                   type="button"
-                  style={{
-                    marginLeft: '8px',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: '#4a90e2',
-                    fontSize: '1.1em',
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handlePersonRemove(person.id);
-                  }}
-                  aria-label={`Remove ${person.name}`}
+                  className="remove-button"
+                  onClick={() => handlePersonRemove(personTag.personId)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: '4px' }}
                 >
                   ×
                 </button>
-              </span>
+              </div>
             ))
           ) : (
-            <div style={{ color: '#666', fontStyle: 'italic' }}>Click on the image to tag people in the image.</div>
+            <p style={{ color: '#888' }}>No people tagged yet.</p>
           )}
         </div>
       </div>
@@ -539,6 +584,17 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
           />
           {_isLocationsDropdownOpen && (
             <div className="dropdown-menu">
+              <div
+                className="dropdown-item"
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setLocationConfidence('');
+                  _setLocationInput('');
+                  _setIsLocationsDropdownOpen(false);
+                }}
+              >
+                Clear selection
+              </div>
               {_locations.map((location: Location) => (
                 <div
                   key={location.id}
@@ -689,6 +745,17 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
           />
           {_isOccasionsDropdownOpen && (
             <div className="dropdown-menu">
+              <div
+                className="dropdown-item"
+                onClick={() => {
+                  setSelectedOccasion(null);
+                  setOccasionConfidence('');
+                  _setOccasionInput('');
+                  _setIsOccasionsDropdownOpen(false);
+                }}
+              >
+                Clear selection
+              </div>
               {_occasions.map((occasion: Occasion) => (
                 <div
                   key={occasion.id}
@@ -791,22 +858,123 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
         <select
           className="form-control"
           value={dateType}
-          onChange={(e) => setDateType(e.target.value)}
+          onChange={(e) => {
+            setDateType(e.target.value);
+            setDateValue('');
+            setDateConfidence('');
+          }}
         >
           <option value="">Select date type</option>
-          <option value="full_date">Full Date</option>
-          <option value="year">Year</option>
           <option value="decades">Decades</option>
-          <option value="month_year">Month-Year</option>
+          <option value="year">Years</option>
+          <option value="month_year">Month Year</option>
+          <option value="full_date">Full Date</option>
         </select>
         {dateType && (
-          <input
-            type="text"
-            className="form-control"
-            placeholder={`Enter ${dateType}`}
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-          />
+          <div className="date-value-input">
+            {dateType === 'decades' && (
+              <select
+                className="form-control"
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+              >
+                <option value="">Select decade</option>
+                {['1920s', '1930s', '1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s'].map((decade) => (
+                  <option key={decade} value={decade}>{decade}</option>
+                ))}
+              </select>
+            )}
+            {dateType === 'year' && (
+              <select
+                className="form-control"
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+              >
+                <option value="">Select year</option>
+                {Array.from({ length: 86 }, (_, i) => 1926 + i).map((year) => (
+                  <option key={year} value={year.toString()}>{year}</option>
+                ))}
+              </select>
+            )}
+            {dateType === 'month_year' && (
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <select
+                  className="form-control"
+                  value={dateValue.split(' ')[0] || ''}
+                  onChange={(e) => {
+                    const month = e.target.value;
+                    const year = dateValue.split(' ')[1] || '';
+                    setDateValue(`${month} ${year}`.trim());
+                  }}
+                >
+                  <option value="">Select month</option>
+                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month) => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+                <select
+                  className="form-control"
+                  value={dateValue.split(' ')[1] || ''}
+                  onChange={(e) => {
+                    const month = dateValue.split(' ')[0] || '';
+                    const year = e.target.value;
+                    setDateValue(`${month} ${year}`.trim());
+                  }}
+                >
+                  <option value="">Select year</option>
+                  {Array.from({ length: 86 }, (_, i) => 1926 + i).map((year) => (
+                    <option key={year} value={year.toString()}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {dateType === 'full_date' && (
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <select
+                  className="form-control"
+                  value={dateValue.split('-')[0] || ''}
+                  onChange={(e) => {
+                    const day = e.target.value;
+                    const [_, month, year] = dateValue.split('-');
+                    setDateValue(`${day}-${month || ''}-${year || ''}`.trim());
+                  }}
+                >
+                  <option value="">Day</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day.toString().padStart(2, '0')}>{day}</option>
+                  ))}
+                </select>
+                <select
+                  className="form-control"
+                  value={dateValue.split('-')[1] || ''}
+                  onChange={(e) => {
+                    const [day, _, year] = dateValue.split('-');
+                    const month = e.target.value;
+                    setDateValue(`${day || ''}-${month}-${year || ''}`.trim());
+                  }}
+                >
+                  <option value="">Month</option>
+                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((month) => (
+                    <option key={month} value={month}>{new Date(2000, parseInt(month) - 1).toLocaleString('default', { month: 'long' })}</option>
+                  ))}
+                </select>
+                <select
+                  className="form-control"
+                  value={dateValue.split('-')[2] || ''}
+                  onChange={(e) => {
+                    const [day, month, _] = dateValue.split('-');
+                    const year = e.target.value;
+                    setDateValue(`${day || ''}-${month || ''}-${year}`.trim());
+                  }}
+                >
+                  <option value="">Year</option>
+                  {Array.from({ length: 86 }, (_, i) => 1926 + i).map((year) => (
+                    <option key={year} value={year.toString()}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         )}
         {/* Date Confidence Meter - only show if a date type is selected */}
         {dateType && (

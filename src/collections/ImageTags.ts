@@ -21,10 +21,6 @@ const ImageTags: CollectionConfig = {
       },
       options: [
         {
-          label: 'Select an option',
-          value: '',
-        },
-        {
           label: 'Full Date',
           value: 'full_date',
         },
@@ -41,7 +37,6 @@ const ImageTags: CollectionConfig = {
           value: 'month_year',
         },
       ],
-      defaultValue: '',
     },
     {
       name: 'whenValue',
