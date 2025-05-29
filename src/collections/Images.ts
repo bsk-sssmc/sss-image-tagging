@@ -118,7 +118,6 @@ export const Images: CollectionConfig = {
   admin: {
     useAsTitle: 'filename',
     defaultColumns: ['filename', 'alt', 'createdAt'],
-    group: 'Media',
     enableRichTextRelationship: true,
     enableRichTextLink: true,
     description: 'Upload and manage media files',

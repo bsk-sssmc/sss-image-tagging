@@ -78,7 +78,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
 
     const initialize = async () => {
       try {
-        const response = await fetch('/api/users/me', {
+        const response = await fetch('/api/auth/me', {
           credentials: 'include',
         });
         

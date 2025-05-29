@@ -36,7 +36,7 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
-  const [showAllImages, setShowAllImages] = useState(false);
+  const [showAllImages, setShowAllImages] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,16 +82,14 @@ export default function GalleryPage() {
 
   const uniqueImages = Array.from(uniqueImagesMap.values()) as UniqueImage[];
 
-  const filteredImages = showAllImages 
-    ? allImages.filter((image: Image) => 
-        image.url.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : uniqueImages.filter((image: UniqueImage) => {
-        const matchesSearch = image.url.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesAlbum = selectedAlbums.length === 0 || 
-          image.albumIds.some((albumId: string) => selectedAlbums.includes(albumId));
-        return matchesSearch && matchesAlbum;
-      });
+  const filteredImages = allImages.filter((image: Image) => {
+    const matchesSearch = image.url.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesAlbum = selectedAlbums.length === 0 || 
+      uniqueImages.find(uniqueImage => uniqueImage.id === image.id)?.albumIds.some(
+        (albumId: string) => selectedAlbums.includes(albumId)
+      );
+    return matchesSearch && matchesAlbum;
+  });
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
@@ -112,40 +110,26 @@ export default function GalleryPage() {
         </div>
 
         <div className="sidebar-section">
-          <div className="show-all-toggle">
-            <label className="album-filter">
-              <input
-                type="checkbox"
-                checked={showAllImages}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowAllImages(e.target.checked)}
-              />
-              Show All Images
-            </label>
+          <h3>Filter by Album</h3>
+          <div className="album-filters">
+            {albums.map((album: Album) => (
+              <label key={album.id} className="album-filter">
+                <input
+                  type="checkbox"
+                  checked={selectedAlbums.includes(album.id)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    if (e.target.checked) {
+                      setSelectedAlbums([...selectedAlbums, album.id]);
+                    } else {
+                      setSelectedAlbums(selectedAlbums.filter((id: string) => id !== album.id));
+                    }
+                  }}
+                />
+                {album.name}
+                <span className="album-count">({album.images.length})</span>
+              </label>
+            ))}
           </div>
-          {!showAllImages && (
-            <>
-              <h3>Albums</h3>
-              <div className="album-filters">
-                {albums.map((album: Album) => (
-                  <label key={album.id} className="album-filter">
-                    <input
-                      type="checkbox"
-                      checked={selectedAlbums.includes(album.id)}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        if (e.target.checked) {
-                          setSelectedAlbums([...selectedAlbums, album.id]);
-                        } else {
-                          setSelectedAlbums(selectedAlbums.filter((id: string) => id !== album.id));
-                        }
-                      }}
-                    />
-                    {album.name}
-                    <span className="album-count">({album.images.length})</span>
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </aside>
 
@@ -153,7 +137,7 @@ export default function GalleryPage() {
         <h1 className="gallery-heading">Gallery</h1>
 
         <div className="gallery-grid">
-          {filteredImages.map((image: Image | UniqueImage) => (
+          {filteredImages.map((image: Image) => (
             <Link
               key={image.id}
               href={`/tag/${image.id}`}

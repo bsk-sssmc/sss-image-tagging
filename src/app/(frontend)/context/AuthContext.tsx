@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isLoginPage = pathname === '/login';
 
   // Compute isAdmin based on user's collection
-  const isAdmin = user?.collection === 'users';
+  const isAdmin = user?.collection === 'admins';
 
   // Handle initial mount and hydration
   useEffect(() => {
@@ -64,18 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Try to call logout endpoint, but don't fail if it errors
       try {
-        const res = await fetch('/api/users/logout', {
+        await fetch('/api/users/logout', {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
         });
-
-        if (!res.ok) {
-          console.warn('Logout endpoint returned error:', res.status);
-        }
       } catch (err) {
         console.warn('Logout endpoint error:', err);
       }
@@ -103,23 +95,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isLoginPage || !isMounted) return;
 
       try {
-        const res = await fetch('/api/users/me', {
+        const res = await fetch('/api/auth/me', {
           credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
         });
 
         if (res.ok) {
           const data = await res.json();
           if (data?.user) {
             setUser(data.user);
-            // Only store in localStorage if we're not in production
-            if (process.env.NODE_ENV !== 'production') {
-              localStorage.setItem('auth-state', JSON.stringify(data.user));
-              localStorage.setItem('auth-timestamp', Date.now().toString());
-            }
+            localStorage.setItem('auth-state', JSON.stringify(data.user));
+            localStorage.setItem('auth-timestamp', Date.now().toString());
           } else {
             // No user data, treat as unauthorized
             await handleLogout();

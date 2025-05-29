@@ -10,18 +10,17 @@ export async function POST(req: Request) {
 
     const { email, password, displayName } = await req.json()
 
-    // Create the user in the general-users collection
-    const user = await payload.create({
-      collection: 'general-users',
+    // Only create the user in the 'users' collection
+    const result = await payload.create({
+      collection: 'users',
       data: {
         email,
         password,
         displayName,
-        role: 'user',
       },
     })
 
-    return NextResponse.json({ user })
+    return NextResponse.json({ result })
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json(

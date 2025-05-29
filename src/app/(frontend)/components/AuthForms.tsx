@@ -17,7 +17,7 @@ export default function AuthForms() {
     // Check if user needs to set display name
     const checkDisplayName = async () => {
       try {
-        const res = await fetch('/api/users/me', {
+        const res = await fetch('/api/auth/me', {
           credentials: 'include',
         })
         if (res.ok) {
@@ -55,7 +55,8 @@ export default function AuthForms() {
       
       console.log('Attempting login with redirect to:', from)
       
-      const res = await fetch(`/api/users/login?from=${encodeURIComponent(from)}`, {
+      // First try general users login
+      let res = await fetch(`/api/general-users/login?from=${encodeURIComponent(from)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,6 +67,21 @@ export default function AuthForms() {
         }),
         credentials: 'include',
       })
+
+      // If general users login fails, try admin users login
+      if (!res.ok) {
+        res = await fetch(`/api/users/login?from=${encodeURIComponent(from)}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password
+          }),
+          credentials: 'include',
+        })
+      }
 
       const data = await res.json()
       console.log('Login response:', { status: res.status, ok: res.ok, data })
