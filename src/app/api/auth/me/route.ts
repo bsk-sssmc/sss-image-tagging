@@ -9,7 +9,7 @@ export async function GET(req: Request) {
       return acc
     }, {} as Record<string, string>)
 
-    const token = cookies?.['payload-token']
+    const token = cookies?.['payload-token'] || cookies?.['token']
 
     if (!token) {
       return NextResponse.json(
