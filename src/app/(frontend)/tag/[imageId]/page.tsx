@@ -396,7 +396,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
         </div>
         {isInstructionsExpanded && (
           <div className="instructions-content">
-            <p>Welcome to the image tagging interface! Here's how to use it:</p>
+            <p>Welcome to the image tagging interface! Here&apos;s how to use it:</p>
             <ul>
               <li>Click on the image to open the people tagging interface where you can mark and identify people in the photo</li>
               <li>Use the form on the right to add information about the image:</li>
@@ -407,7 +407,7 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
                 <li>Add any additional context or remarks</li>
               </ul>
               <li>For each field, you can indicate your confidence level using the rating buttons (1-5)</li>
-              <li>Click "Save Tag" when you're done to save your work</li>
+              <li>Click &quot;Save Tag&quot; when you&apos;re done to save your work</li>
             </ul>
           </div>
         )}
