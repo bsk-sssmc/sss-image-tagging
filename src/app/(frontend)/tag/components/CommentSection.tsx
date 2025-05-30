@@ -304,6 +304,7 @@ export default function CommentSection({ imageId }: CommentSectionProps) {
 
   return (
     <div className="comment-section">
+      <h2 style={{ margin: '0 0 2rem 0', fontSize: '2rem', fontWeight: 700, color: '#4a90e2' }}>Comments</h2>
       <div className="comment-input-container" style={{ position: 'relative' }}>
         {isSubmittingComment && (
           <div className="loading-overlay">

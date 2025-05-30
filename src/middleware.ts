@@ -29,6 +29,7 @@ export function middleware(request: NextRequest) {
 
   // For admin paths, check if user is an admin
   if (isAdminPath) {
+    console.log('token: ', token);
     if (!token) {
       return NextResponse.redirect(new URL('/login', request.url));
     }

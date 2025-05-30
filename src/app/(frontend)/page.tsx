@@ -5,6 +5,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './context/AuthContext'
 import Image from 'next/image'
+import Link from 'next/link'
+import { ImagePlus, GalleryHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Location {
   id: string;
@@ -63,6 +65,8 @@ export default function HomePage() {
   const [expandedPills, setExpandedPills] = useState<string | null>(null)
   const [isEditingName, setIsEditingName] = useState(false)
   const [newDisplayName, setNewDisplayName] = useState('')
+  const [isProfileExpanded, setIsProfileExpanded] = useState(false)
+  const [isTagsExpanded, setIsTagsExpanded] = useState(true)
   const hasFetchedData = useRef(false)
 
   // Pagination states
@@ -378,279 +382,312 @@ export default function HomePage() {
 
   return (
     <div className="home-container">
+      <div className="action-buttons">
+        <Link href="/tag/random" className="action-card">
+          <div className="action-card-icon">
+            <ImagePlus size={32} />
+          </div>
+          <div className="action-card-content">
+            <h3>Tag a Random Image</h3>
+            <p>Start tagging images to help organize and categorize your photo collection</p>
+          </div>
+        </Link>
+        <Link href="/gallery" className="action-card">
+          <div className="action-card-icon">
+            <GalleryHorizontal size={32} />
+          </div>
+          <div className="action-card-content">
+            <h3>See Images in Gallery</h3>
+            <p>Browse through all your tagged images in a beautiful gallery view</p>
+          </div>
+        </Link>
+      </div>
+
       <div className="profile-section">
-        <h2>Your Profile</h2>
-        <div className="profile-content">
-          {isEditingName ? (
-            <form onSubmit={handleNameEdit} className="profile-edit-form">
-              <input
-                type="text"
-                value={newDisplayName}
-                onChange={(e) => setNewDisplayName(e.target.value)}
-                placeholder="Enter new display name"
-                className="profile-input"
-              />
-              <div className="profile-edit-buttons">
-                <button type="submit" className="profile-save-button">Save</button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setIsEditingName(false)
-                    setNewDisplayName('')
-                  }}
-                  className="profile-cancel-button"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="profile-info">
-              <div className="profile-field">
-                <span className="profile-label">Name:</span>
-                <span className="profile-value">{user.displayName}</span>
-                <button 
-                  onClick={() => {
-                    setIsEditingName(true)
-                    setNewDisplayName(user.displayName || '')
-                  }}
-                  className="profile-edit-button"
-                >
-                  Edit
-                </button>
-              </div>
-              <div className="profile-field">
-                <span className="profile-label">Email:</span>
-                <span className="profile-value">{user.email}</span>
-              </div>
-            </div>
-          )}
+        <div className="section-header" onClick={() => setIsProfileExpanded(!isProfileExpanded)}>
+          <h2>Your Profile</h2>
+          {isProfileExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
         </div>
+        {isProfileExpanded && (
+          <div className="profile-content">
+            {isEditingName ? (
+              <form onSubmit={handleNameEdit} className="profile-edit-form">
+                <input
+                  type="text"
+                  value={newDisplayName}
+                  onChange={(e) => setNewDisplayName(e.target.value)}
+                  placeholder="Enter new display name"
+                  className="profile-input"
+                />
+                <div className="profile-edit-buttons">
+                  <button type="submit" className="profile-save-button">Save</button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsEditingName(false)
+                      setNewDisplayName('')
+                    }}
+                    className="profile-cancel-button"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="profile-info">
+                <div className="profile-field">
+                  <span className="profile-label">Name:</span>
+                  <span className="profile-value">{user.displayName}</span>
+                  <button 
+                    onClick={() => {
+                      setIsEditingName(true)
+                      setNewDisplayName(user.displayName || '')
+                    }}
+                    className="profile-edit-button"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="profile-field">
+                  <span className="profile-label">Email:</span>
+                  <span className="profile-value">{user.email}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="table-container">
-        <h2>Your Tags</h2>
-        {isLoading ? (
-          <div className="loading-spinner-container">
-            <div className="loading-spinner" />
-          </div>
-        ) : tags.length > 0 ? (
+        <div className="section-header" onClick={() => setIsTagsExpanded(!isTagsExpanded)}>
+          <h2>Your Tags</h2>
+          {isTagsExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+        </div>
+        {isTagsExpanded && (
           <>
-            <div className="filters-section">
-              <div className="filters-container">
-                <FilterDropdown
-                  label="Persons"
-                  options={uniquePersons}
-                  selected={selectedPersons}
-                  onChange={setSelectedPersons}
-                />
-                <FilterDropdown
-                  label="Locations"
-                  options={uniqueLocations}
-                  selected={selectedLocations}
-                  onChange={setSelectedLocations}
-                />
-                <FilterDropdown
-                  label="Occasions"
-                  options={uniqueOccasions}
-                  selected={selectedOccasions}
-                  onChange={setSelectedOccasions}
-                />
-                <FilterDropdown
-                  label="Image Titles"
-                  options={uniqueImageTitles}
-                  selected={selectedImageTitles}
-                  onChange={setSelectedImageTitles}
-                />
-                <DateFilter />
+            {isLoading ? (
+              <div className="loading-spinner-container">
+                <div className="loading-spinner" />
               </div>
-              <div className="selected-filters">
-                {selectedPersons.map(id => {
-                  const option = uniquePersons.find(([optId]) => optId === id)
-                  if (!option) return null
-                  return (
-                    <span key={id} className="selected-pill">
-                      Person: {option[1]}
-                      <button
-                        className="remove-pill"
-                        onClick={() => setSelectedPersons(selectedPersons.filter(s => s !== id))}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-                {selectedLocations.map(id => {
-                  const option = uniqueLocations.find(([optId]) => optId === id)
-                  if (!option) return null
-                  return (
-                    <span key={id} className="selected-pill">
-                      Location: {option[1]}
-                      <button
-                        className="remove-pill"
-                        onClick={() => setSelectedLocations(selectedLocations.filter(s => s !== id))}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-                {selectedOccasions.map(id => {
-                  const option = uniqueOccasions.find(([optId]) => optId === id)
-                  if (!option) return null
-                  return (
-                    <span key={id} className="selected-pill">
-                      Occasion: {option[1]}
-                      <button
-                        className="remove-pill"
-                        onClick={() => setSelectedOccasions(selectedOccasions.filter(s => s !== id))}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-                {selectedDate && (
-                  <span className="selected-pill">
-                    Date: {new Date(selectedDate).toLocaleDateString()}
-                    <button
-                      className="remove-pill"
-                      onClick={() => setSelectedDate('')}
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-                {selectedImageTitles.map(id => {
-                  const option = uniqueImageTitles.find(([optId]) => optId === id)
-                  if (!option) return null
-                  return (
-                    <span key={id} className="selected-pill">
-                      Image: {option[1]}
-                      <button
-                        className="remove-pill"
-                        onClick={() => setSelectedImageTitles(selectedImageTitles.filter(s => s !== id))}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-              </div>
-            </div>
-            <div className="table-wrapper">
-              <table className="tags-table">
-                <thead>
-                  <tr>
-                    <th>Created At</th>
-                    <th>Image</th>
-                    <th>Who</th>
-                    <th>Location</th>
-                    <th>Occasion</th>
-                    <th>When Type</th>
-                    <th>When</th>
-                    <th>What</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentTags.map((tag) => (
-                    <tr key={`${tag.id}-${tag.mediaId.id}`}>
-                      <td>{new Date(tag.createdAt).toLocaleDateString()}</td>
-                      <td>
-                        <div className="image-link">
-                          <a href={`/tag/${tag.mediaId.id}`} className="image-link">
-                            {tag.mediaId.filename}
-                          </a>
-                          <div className="image-preview-tooltip">
-                            <Image
-                              src={tag.mediaId.url || ''}
-                              alt={tag.mediaId.alt || tag.mediaId.filename}
-                              width={200}
-                              height={200}
-                              style={{ objectFit: 'cover' }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div 
-                          className={`pill-container ${expandedPills === tag.id ? 'expanded' : ''}`}
-                          onClick={() => togglePillExpansion(tag.id)}
+            ) : tags.length > 0 ? (
+              <>
+                <div className="filters-section">
+                  <div className="filters-container">
+                    <FilterDropdown
+                      label="Persons"
+                      options={uniquePersons}
+                      selected={selectedPersons}
+                      onChange={setSelectedPersons}
+                    />
+                    <FilterDropdown
+                      label="Locations"
+                      options={uniqueLocations}
+                      selected={selectedLocations}
+                      onChange={setSelectedLocations}
+                    />
+                    <FilterDropdown
+                      label="Occasions"
+                      options={uniqueOccasions}
+                      selected={selectedOccasions}
+                      onChange={setSelectedOccasions}
+                    />
+                    <FilterDropdown
+                      label="Image Titles"
+                      options={uniqueImageTitles}
+                      selected={selectedImageTitles}
+                      onChange={setSelectedImageTitles}
+                    />
+                    <DateFilter />
+                  </div>
+                  <div className="selected-filters">
+                    {selectedPersons.map(id => {
+                      const option = uniquePersons.find(([optId]) => optId === id)
+                      if (!option) return null
+                      return (
+                        <span key={id} className="selected-pill">
+                          Person: {option[1]}
+                          <button
+                            className="remove-pill"
+                            onClick={() => setSelectedPersons(selectedPersons.filter(s => s !== id))}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )
+                    })}
+                    {selectedLocations.map(id => {
+                      const option = uniqueLocations.find(([optId]) => optId === id)
+                      if (!option) return null
+                      return (
+                        <span key={id} className="selected-pill">
+                          Location: {option[1]}
+                          <button
+                            className="remove-pill"
+                            onClick={() => setSelectedLocations(selectedLocations.filter(s => s !== id))}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )
+                    })}
+                    {selectedOccasions.map(id => {
+                      const option = uniqueOccasions.find(([optId]) => optId === id)
+                      if (!option) return null
+                      return (
+                        <span key={id} className="selected-pill">
+                          Occasion: {option[1]}
+                          <button
+                            className="remove-pill"
+                            onClick={() => setSelectedOccasions(selectedOccasions.filter(s => s !== id))}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )
+                    })}
+                    {selectedDate && (
+                      <span className="selected-pill">
+                        Date: {new Date(selectedDate).toLocaleDateString()}
+                        <button
+                          className="remove-pill"
+                          onClick={() => setSelectedDate('')}
                         >
-                          {tag.personTags.map((personTag) => (
-                            <span key={`${tag.id}-${personTag.personId.id}`} className="pill">
-                              {personTag.personId.name}
-                              {personTag.confidence && renderConfidenceStars(personTag.confidence)}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>{tag.location?.name || '-'}</td>
-                      <td>{tag.occasion?.name || '-'}</td>
-                      <td>{tag.whenType || '-'}</td>
-                      <td>{tag.whenValue || '-'}</td>
-                      <td>{tag.context || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="pagination-controls">
-              <div className="items-per-page">
-                <label htmlFor="itemsPerPage">Items per page:</label>
-                <select
-                  id="itemsPerPage"
-                  value={itemsPerPage}
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="items-per-page-select"
-                >
-                  {itemsPerPageOptions.map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="pagination-info">
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredTags.length)} of {filteredTags.length} tags
-              </div>
-              <div className="pagination-buttons">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="pagination-button"
-                >
-                  «
-                </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="pagination-button"
-                >
-                  ‹
-                </button>
-                <span className="pagination-page-info">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="pagination-button"
-                >
-                  ›
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="pagination-button"
-                >
-                  »
-                </button>
-              </div>
-            </div>
+                          ×
+                        </button>
+                      </span>
+                    )}
+                    {selectedImageTitles.map(id => {
+                      const option = uniqueImageTitles.find(([optId]) => optId === id)
+                      if (!option) return null
+                      return (
+                        <span key={id} className="selected-pill">
+                          Image: {option[1]}
+                          <button
+                            className="remove-pill"
+                            onClick={() => setSelectedImageTitles(selectedImageTitles.filter(s => s !== id))}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="table-wrapper">
+                  <table className="tags-table">
+                    <thead>
+                      <tr>
+                        <th>Created At</th>
+                        <th>Image</th>
+                        <th>Who</th>
+                        <th>Location</th>
+                        <th>Occasion</th>
+                        <th>When Type</th>
+                        <th>When</th>
+                        <th>What</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentTags.map((tag) => (
+                        <tr key={`${tag.id}-${tag.mediaId.id}`}>
+                          <td>{new Date(tag.createdAt).toLocaleDateString()}</td>
+                          <td>
+                            <div className="image-link">
+                              <a href={`/tag/${tag.mediaId.id}`} className="image-link">
+                                {tag.mediaId.filename}
+                              </a>
+                              <div className="image-preview-tooltip">
+                                <Image
+                                  src={tag.mediaId.url || ''}
+                                  alt={tag.mediaId.alt || tag.mediaId.filename}
+                                  width={200}
+                                  height={200}
+                                  style={{ objectFit: 'cover' }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div 
+                              className={`pill-container ${expandedPills === tag.id ? 'expanded' : ''}`}
+                              onClick={() => togglePillExpansion(tag.id)}
+                            >
+                              {tag.personTags.map((personTag) => (
+                                <span key={`${tag.id}-${personTag.personId.id}`} className="pill">
+                                  {personTag.personId.name}
+                                  {personTag.confidence && renderConfidenceStars(personTag.confidence)}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td>{tag.location?.name || '-'}</td>
+                          <td>{tag.occasion?.name || '-'}</td>
+                          <td>{tag.whenType || '-'}</td>
+                          <td>{tag.whenValue || '-'}</td>
+                          <td>{tag.context || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="pagination-controls">
+                  <div className="items-per-page">
+                    <label htmlFor="itemsPerPage">Items per page:</label>
+                    <select
+                      id="itemsPerPage"
+                      value={itemsPerPage}
+                      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                      className="items-per-page-select"
+                    >
+                      {itemsPerPageOptions.map(option => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="pagination-info">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredTags.length)} of {filteredTags.length} tags
+                  </div>
+                  <div className="pagination-buttons">
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="pagination-button"
+                    >
+                      «
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="pagination-button"
+                    >
+                      ‹
+                    </button>
+                    <span className="pagination-page-info">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="pagination-button"
+                    >
+                      ›
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="pagination-button"
+                    >
+                      »
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="no-tags">No tags found. Start tagging to see them here!</p>
+            )}
           </>
-        ) : (
-          <p className="no-tags">No tags found. Start tagging to see them here!</p>
         )}
       </div>
     </div>
