@@ -566,7 +566,7 @@ export default function TagForm({ onSubmit, _currentImageUrl, currentImageId, pe
               </div>
             ))
           ) : (
-            <p style={{ color: '#888' }}>No people tagged yet.</p>
+            <p style={{ color: '#888' }}>No people tagged yet. Click on the image to start tagging.</p>
           )}
         </div>
       </div>

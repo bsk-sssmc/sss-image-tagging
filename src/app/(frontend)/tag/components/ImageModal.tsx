@@ -382,7 +382,7 @@ export default function ImageModal({ isOpen, onClose, imageUrl, verifiedTags = [
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-instructions">
-          {isPlacingPin ? 'Click on the image to place a pin' : 'Click outside or press ESC to close'}
+          {isPlacingPin ? 'Click on the image to place a pin' : 'Click on "Place Pin" to tag a person. Click outside or press ESC to close'}
         </div>
         <div className="modal-actions">
           {!isPlacingPin ? (

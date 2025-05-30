@@ -104,6 +104,7 @@ export default function GalleryPage() {
   return (
     <div className="gallery-layout">
       <aside className="gallery-sidebar">
+      <h1 className="filters-heading">Filters</h1>
         <div className="sidebar-section">
           <h3>Search</h3>
           <input

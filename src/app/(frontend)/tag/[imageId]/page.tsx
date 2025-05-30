@@ -83,6 +83,8 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
   const { imageId } = use(params);
   const hasInitialized = useRef(false);
   const [persons, setPersons] = useState<{ id: string; name: string }[]>([]);
+  const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(0);
 
   // Check authentication and fetch image on mount
   useEffect(() => {
@@ -348,6 +350,13 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
     fetchPersons();
   }, []);
 
+  const handleScrollToComments = () => {
+    const commentsSection = document.getElementById('comments-section');
+    if (commentsSection) {
+      commentsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   if (error) {
     return (
       <div className="tag-container">
@@ -378,6 +387,45 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
           </div>
         </div>
       )}
+
+      {/* Instructions Section */}
+      <div className="instructions-section">
+        <div className="instructions-header" onClick={() => setIsInstructionsExpanded(!isInstructionsExpanded)}>
+          <h3>Instructions</h3>
+          <span className={`instructions-arrow ${isInstructionsExpanded ? 'expanded' : ''}`}>▼</span>
+        </div>
+        {isInstructionsExpanded && (
+          <div className="instructions-content">
+            <p>Welcome to the image tagging interface! Here's how to use it:</p>
+            <ul>
+              <li>Click on the image to open the people tagging interface where you can mark and identify people in the photo</li>
+              <li>Use the form on the right to add information about the image:</li>
+              <ul>
+                <li>Specify the location where the image was taken</li>
+                <li>Select the occasion or event</li>
+                <li>Choose the date or time period</li>
+                <li>Add any additional context or remarks</li>
+              </ul>
+              <li>For each field, you can indicate your confidence level using the rating buttons (1-5)</li>
+              <li>Click "Save Tag" when you're done to save your work</li>
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Verified Information Section */}
+      {currentImage?.id && (
+        <div className="verified-info-section">
+          <VerifiedInfo imageId={currentImage.id} />
+          {/* Comments Link */}
+          <div className="comments-link-container">
+             <a href="#comments-section" className="comments-link" onClick={handleScrollToComments}>
+                <span className="verified-info-title">Comments ({commentsCount})</span>
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="tag-grid">
         {/* Left Column - Image */}
         <div className="image-container">
@@ -448,15 +496,10 @@ export default function TagPage({ params }: { params: Promise<{ imageId: string 
         </div>
       </div>
 
-      {/* Verified Information Section */}
+      {/* Comments Section */}
       {currentImage?.id && (
-        <div className="verified-info-section">
-          <div className="verified-info-container">
-            <VerifiedInfo imageId={currentImage.id} />
-          </div>
-          <div className="comments-container">
-            <CommentSection imageId={imageId} />
-          </div>
+        <div className="comments-container" id="comments-section">
+          <CommentSection imageId={imageId} />
         </div>
       )}
 
